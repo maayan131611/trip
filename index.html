@@ -3,85 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="איפה מעין עכשיו: המסלול בדרום אמריקה">
 <style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>הטיול של מעין</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+<title>הטיול של מעין</title>
+<meta name="description" content="איפה מעין עכשיו: המסלול בדרום אמריקה">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 </head>
 <body>
-<style>
-/* Layout: one narrow column floating over a Patagonian skyline; granite peaks above, glacier lagoon below. */
-:root{
-  --sky-top:#cfe0ea; --sky-bot:#eef4f6;
-  --granite:#3f5463; --granite-2:#6f8796; --snow:#f7fafb;
-  --lagoon:#3d9aa6; --lagoon-deep:#22707c;
-  --ink:#1d2a33; --ink-soft:#4b5d69;
-  --card:rgba(255,255,255,.86); --card-line:rgba(29,42,51,.10);
-  --glow:#e8735a; /* alpenglow on Fitz Roy at sunrise */
-  --font-display:"Secular One","Assistant",system-ui,sans-serif;
-  --font-body:"Assistant",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --sky-top:#141d2b; --sky-bot:#26344a;
-  --granite:#0f1823; --granite-2:#2a3a4c; --snow:#c9d6e0;
-  --lagoon:#1f5964; --lagoon-deep:#123c45;
-  --ink:#eef3f6; --ink-soft:#a9bac6;
-  --card:rgba(22,32,44,.84); --card-line:rgba(238,243,246,.12);
-  --glow:#f08a6f; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --sky-top:#141d2b; --sky-bot:#26344a;
-  --granite:#0f1823; --granite-2:#2a3a4c; --snow:#c9d6e0;
-  --lagoon:#1f5964; --lagoon-deep:#123c45;
-  --ink:#eef3f6; --ink-soft:#a9bac6;
-  --card:rgba(22,32,44,.84); --card-line:rgba(238,243,246,.12);
-  --glow:#f08a6f; color-scheme:dark}
-
-body{background:linear-gradient(var(--sky-top),var(--sky-bot) 45%,var(--lagoon) 70%,var(--lagoon-deep));color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;min-height:100vh;padding:0 16px;position:relative;overflow-x:hidden}
-.scene{position:absolute;inset:0 0 auto 0;height:520px;pointer-events:none;z-index:0}
-.scene svg{width:100%;height:100%;display:block}
-.p-back{fill:var(--granite-2)} .p-front{fill:var(--granite)} .p-snow{fill:var(--snow)}
-.p-shore{fill:var(--lagoon)}
-main{position:relative;z-index:1;max-width:440px;margin:0 auto;padding-block:40px 32px;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
-.avatar{width:112px;height:112px;border-radius:50%;border:4px solid var(--snow);background:var(--granite-2);display:grid;place-items:center;font-family:var(--font-display);font-size:48px;color:var(--snow);box-shadow:0 6px 20px rgba(0,0,0,.18);overflow:hidden}
-.avatar img{width:100%;height:100%;object-fit:cover}
-h1{font-family:var(--font-display);font-weight:400;font-size:2.6rem;line-height:1.1;margin:0;color:var(--ink);text-wrap:balance;text-shadow:0 1px 0 var(--snow)}
-.bio{margin:0;max-width:34ch;color:var(--ink);font-weight:600;text-wrap:balance}
-
-.status{width:100%;background:var(--card);backdrop-filter:blur(8px);border:1px solid var(--card-line);border-radius:20px;padding:18px 20px;display:grid;gap:10px;text-align:start}
-.status .eyebrow{font-size:.78rem;letter-spacing:.06em;color:var(--ink-soft);font-weight:700}
-.status .big{font-family:var(--font-display);font-size:1.7rem;line-height:1.15;display:flex;align-items:center;gap:10px}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--glow);box-shadow:0 0 0 0 var(--glow);animation:pulse 2.4s infinite;flex:none}
-@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--glow) 60%,transparent)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
-.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.9rem;color:var(--ink-soft)}
-.meta b{color:var(--ink);font-weight:700}
-.data{font-family:var(--font-data);font-size:.82rem;direction:ltr;unicode-bidi:isolate}
-
-.route{width:100%;display:flex;flex-direction:column;gap:0;text-align:start;background:var(--card);border:1px solid var(--card-line);border-radius:20px;padding:14px 20px}
-.route h2{font-size:.78rem;letter-spacing:.06em;color:var(--ink-soft);margin:0 0 6px;font-weight:700}
-.stop{display:grid;grid-template-columns:18px 1fr auto;gap:12px;align-items:center;padding:8px 0;position:relative}
-.stop::before{content:"";position:absolute;inset-inline-start:8px;top:0;bottom:0;width:2px;background:var(--card-line)}
-.stop:first-of-type::before{top:50%} .stop:last-child::before{bottom:50%}
-.pin{width:12px;height:12px;border-radius:50%;border:2px solid var(--granite-2);background:var(--card);position:relative;z-index:1;justify-self:center}
-.stop.done .pin{background:var(--granite-2)}
-.stop.now .pin{background:var(--glow);border-color:var(--glow)}
-.stop .name{font-weight:700;min-width:0}
-.stop .when{font-size:.85rem;color:var(--ink-soft)}
-.stop.plan .name{color:var(--ink-soft);font-weight:600}
-
-.links{width:100%;display:flex;flex-direction:column;gap:12px}
-.btn{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;min-height:60px;padding:0 14px;border-radius:16px;background:var(--snow);color:#1d2a33;text-decoration:none;font-weight:700;font-size:1.08rem;border:1px solid var(--card-line);box-shadow:0 3px 10px rgba(0,0,0,.08);transition:transform .15s ease}
-.btn:hover{transform:translateY(-2px)} .btn:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
-.btn svg{width:26px;height:26px}
-.btn[aria-disabled="true"]{opacity:.6;cursor:default}
-.btn[aria-disabled="true"]:hover{transform:none}
-.btn small{font-weight:600;font-size:.75rem;color:#4b5d69;display:block}
-footer{color:var(--snow);font-size:.85rem;opacity:.9;padding-top:8px}
-.draft{background:var(--glow);color:#fff;font-weight:700;font-size:.8rem;padding:4px 12px;border-radius:999px}
-@media (prefers-reduced-motion:reduce){.dot{animation:none}.btn{transition:none}}
-</style>
-
 <div class="scene" aria-hidden="true">
   <svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice">
     <polygon class="p-back" points="0,330 40,250 70,290 110,200 150,280 190,215 230,300 270,230 310,290 350,210 400,280 400,520 0,520"/>
@@ -92,7 +22,6 @@ footer{color:var(--snow);font-size:.85rem;opacity:.9;padding-top:8px}
     <path class="p-shore" d="M0 470 Q100 440 200 455 T400 450 V520 H0Z"/>
   </svg>
 </div>
-
 <main>
   <div class="avatar" id="avatar"><img src="avatar.jpg" alt="מעין"></div>
   <h1>הטיול של מעין</h1>
@@ -104,6 +33,12 @@ footer{color:var(--snow);font-size:.85rem;opacity:.9;padding-top:8px}
     <div class="meta" id="st-meta"></div>
   </section>
 
+  <section class="mapcard" aria-labelledby="map-h">
+    <h2 id="map-h">המפה</h2>
+    <div id="map" role="region" aria-label="מפת המסלול"></div>
+    <p class="map-hint" id="map-hint"></p>
+  </section>
+
   <section class="route" aria-labelledby="route-h">
     <h2 id="route-h">המסלול עד עכשיו</h2>
     <div id="stops"></div>
@@ -113,38 +48,86 @@ footer{color:var(--snow);font-size:.85rem;opacity:.9;padding-top:8px}
   <footer id="foot"></footer>
 </main>
 
-<script>
-/* ---- Trip data: the only part that changes during the trip ---- */
-const TRIP = {
-  departure: "2026-12-07T16:05:00+02:00",   // Air Europa, TLV
-  home: { name: "תל אביב", lat: 32.0114, lng: 34.8867 },
-  // status: "home" before departure; otherwise the current stop index
-  current: null,
-  lastUpdate: null,                          // ISO time of last location update
-  stops: [
-    { name: "בואנוס איירס", country: "ארגנטינה", lat: -34.6037, lng: -58.3816, from: "2026-12-08", to: null, plan: true },
-    { name: "אושוואיה",      country: "ארגנטינה", lat: -54.8019, lng: -68.3030, from: "2026-12-11", to: null, plan: true }
-  ],
-  links: [
-    { label: "מפת הטיול", note: "מסלול ותמונות ב-Polarsteps", href: "", icon: "map" },
-    { label: "אינסטגרם",  note: "", href: "", icon: "camera" }
-  ]
-};
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lb-title">
+  <div class="lb-top"><span class="lb-title" id="lb-title"></span><button class="lb-x" id="lb-x" aria-label="סגירה">✕</button></div>
+  <div class="lb-stage">
+    <button class="lb-nav" id="lb-prev" aria-label="התמונה הקודמת">›</button>
+    <img id="lb-img" alt="">
+    <button class="lb-nav" id="lb-next" aria-label="התמונה הבאה">‹</button>
+  </div>
+  <div><p class="lb-cap" id="lb-cap"></p><p class="lb-cap lb-count" id="lb-count"></p></div>
+</div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="trip.js"></script>
+<script>
 const ICONS = {
   map:'<svg viewBox="0 0 24 24" fill="none" stroke="#22707c" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
   camera:'<svg viewBox="0 0 24 24" fill="none" stroke="#e8735a" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#e8735a"/></svg>',
-  note:'<svg viewBox="0 0 24 24" fill="none" stroke="#3f5463" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>'
+  stats:'<svg viewBox="0 0 24 24" fill="none" stroke="#3f5463" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>'
 };
 
-const fmtDate = d => new Date(d).toLocaleDateString("he-IL",{day:"numeric",month:"numeric"});
-const km = (a,b) => { const r=x=>x*Math.PI/180, R=6371;
-  const h=Math.sin(r(b.lat-a.lat)/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(r(b.lng-a.lng)/2)**2;
-  return Math.round(2*R*Math.asin(Math.sqrt(h))); };
-const latLabel = p => `${Math.abs(p.lat).toFixed(1)}°${p.lat<0?"S":"N"}`;
-const ago = iso => { const m=Math.round((Date.now()-new Date(iso))/60000);
-  if(m<60) return `לפני ${m} דק׳`; const h=Math.round(m/60); if(h<24) return `לפני ${h} שע׳`; return `לפני ${Math.round(h/24)} ימים`; };
+/* ---------- Lightbox ---------- */
+const lb = { el: document.getElementById("lb"), stop: null, i: 0, opener: null };
+function openGallery(stopIdx, i=0){
+  const s = TRIP.stops[stopIdx]; if(!s.photos?.length) return;
+  lb.stop = s; lb.i = i; lb.opener = document.activeElement;
+  lb.el.hidden = false; showPhoto(); document.getElementById("lb-x").focus();
+}
+function showPhoto(){
+  const p = lb.stop.photos[lb.i], n = lb.stop.photos.length;
+  document.getElementById("lb-title").textContent = lb.stop.name;
+  const img = document.getElementById("lb-img"); img.src = p.src; img.alt = p.caption || lb.stop.name;
+  document.getElementById("lb-cap").textContent = p.caption || "";
+  document.getElementById("lb-count").textContent = `${lb.i+1} / ${n}`;
+  document.getElementById("lb-prev").hidden = document.getElementById("lb-next").hidden = n < 2;
+}
+function step(d){ const n = lb.stop.photos.length; lb.i = (lb.i + d + n) % n; showPhoto(); }
+function closeGallery(){ lb.el.hidden = true; lb.opener?.focus?.(); }
+document.getElementById("lb-x").onclick = closeGallery;
+document.getElementById("lb-prev").onclick = () => step(-1);
+document.getElementById("lb-next").onclick = () => step(1);
+lb.el.addEventListener("click", e => { if(e.target === lb.el) closeGallery(); });
+document.addEventListener("keydown", e => {
+  if(lb.el.hidden) return;
+  if(e.key==="Escape") closeGallery();
+  if(e.key==="ArrowLeft") step(1);    /* RTL: left = next */
+  if(e.key==="ArrowRight") step(-1);
+});
+let tx=null; lb.el.addEventListener("touchstart",e=>tx=e.touches[0].clientX,{passive:true});
+lb.el.addEventListener("touchend",e=>{ if(tx==null) return; const dx=e.changedTouches[0].clientX-tx; if(Math.abs(dx)>40) step(dx>0?1:-1); tx=null; });
 
+/* ---------- Map ---------- */
+function drawMap(){
+  const el = document.getElementById("map");
+  if (typeof L === "undefined"){ el.hidden = true; document.getElementById("map-hint").textContent = "המפה לא נטענה. נסו לרענן את הדף."; return; }
+  const map = L.map(el, { scrollWheelZoom:false, attributionControl:true });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(map);
+  const pts = TRIP.stops.map(s=>[s.lat,s.lng]);
+  const reached = TRIP.current==null ? 0 : TRIP.current+1;
+  if (reached > 1) L.polyline(pts.slice(0,reached), { color:"#e8735a", weight:4 }).addTo(map);
+  const planFrom = Math.max(reached-1, 0);
+  if (pts.length - planFrom > 1) L.polyline(pts.slice(planFrom), { color:"#3f5463", weight:3, dashArray:"6 8", opacity:.7 }).addTo(map);
+  TRIP.stops.forEach((s,i)=>{
+    const st = stopState(i), n = s.photos?.length || 0;
+    const icon = n
+      ? L.divIcon({ className:"", iconSize:[44,44], iconAnchor:[22,22],
+          html:`<div class="ph-pin ${st}" style="background-image:url('${esc(s.photos[0].src)}')"><b>${n}</b></div>` })
+      : L.divIcon({ className:"", iconSize:[14,14], iconAnchor:[7,7], html:`<div class="dot-pin ${st}"></div>` });
+    const m = L.marker([s.lat,s.lng], { icon, title: s.name, keyboard: true }).addTo(map);
+    m.bindTooltip(s.name + (st==="plan" ? " (בתכנון)" : ""), { className:"stop-tip", direction:"top", offset:[0, n?-22:-8] });
+    if (n) m.on("click", () => openGallery(i));
+  });
+  map.fitBounds(L.latLngBounds(pts).pad(0.25));
+  const any = TRIP.stops.some(s=>s.photos?.length);
+  document.getElementById("map-hint").textContent = any
+    ? "לחצו על עיגול עם תמונה כדי לראות את התמונות מהמקום."
+    : "כשיעלו תמונות מהדרך, כל מקום יקבל כאן עיגול עם תמונה שאפשר ללחוץ עליו.";
+}
+
+/* ---------- Status, route list, links ---------- */
 function render(){
   const now = Date.now(), dep = new Date(TRIP.departure).getTime();
   const t = document.getElementById("st-title"), m = document.getElementById("st-meta"), e = document.getElementById("st-eyebrow");
@@ -159,27 +142,34 @@ function render(){
     const day = Math.floor((now-dep)/86400000)+1;
     e.textContent = `יום ${day} בטיול`;
     t.textContent = `${s.name}, ${s.country}`;
-    m.innerHTML = `<span class="data">${latLabel(s)}</span><span><b>${km(TRIP.home,s).toLocaleString("he-IL")}</b> ק״מ מהבית</span>`
+    m.innerHTML = `<span class="data">${latLabel(s)}</span><span><b>${nf(km(TRIP.home,s))}</b> ק״מ מהבית</span>`
       + (TRIP.lastUpdate ? `<span>עודכן ${ago(TRIP.lastUpdate)}</span>` : "");
   }
-  if (nextStop) m.innerHTML += `<span>הבא: <b>${nextStop.name}</b></span>`;
+  if (nextStop) m.innerHTML += `<span>הבא: <b>${esc(nextStop.name)}</b></span>`;
 
-  document.getElementById("stops").innerHTML = [{name:TRIP.home.name, when:"נקודת יציאה", cls:"done"}]
-    .concat(TRIP.stops.map((s,i)=>({name:s.name, when: s.plan ? `בתכנון · ${fmtDate(s.from)}` : `${fmtDate(s.from)}${s.to?"–"+fmtDate(s.to):""}`,
-      cls: i===TRIP.current ? "now" : (TRIP.current!=null && i<TRIP.current ? "done" : "plan")})))
-    .map(s=>`<div class="stop ${s.cls}"><span class="pin"></span><span class="name">${s.name}</span><span class="when">${s.when}</span></div>`).join("");
+  const rows = [`<div class="stop done"><span class="pin"></span><span class="name">${TRIP.home.name}</span><span class="when">נקודת יציאה</span></div>`]
+    .concat(TRIP.stops.map((s,i)=>{
+      const st = stopState(i), n = s.photos?.length || 0;
+      const when = s.plan ? `בתכנון · ${fmtDate(s.from)}` : `${fmtDate(s.from)}${s.to?"–"+fmtDate(s.to):""}`;
+      const attrs = n ? ` has-photos" role="button" tabindex="0" data-i="${i}" aria-label="${esc(s.name)}: ${n} תמונות` : "";
+      return `<div class="stop ${st}${attrs}"><span class="pin"></span><span class="name" data-count="${n}">${esc(s.name)}</span><span class="when">${when}</span></div>`;
+    }));
+  const box = document.getElementById("stops"); box.innerHTML = rows.join("");
+  box.querySelectorAll(".has-photos").forEach(r=>{
+    r.onclick = () => openGallery(+r.dataset.i);
+    r.onkeydown = ev => { if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); openGallery(+r.dataset.i); } };
+  });
 
   document.getElementById("links").innerHTML = TRIP.links.map(l=>{
     const off = !l.href; const sub = off ? "בקרוב" : l.note;
     return `<a class="btn" ${off?'aria-disabled="true" role="link"':`href="${l.href}" target="_blank" rel="noopener"`}>
       <span>${ICONS[l.icon]}</span><span>${l.label}${sub?`<small>${sub}</small>`:""}</span><span></span></a>`;
-  }).join("");
+  }).join("") + `<a class="btn" href="stats.html"><span>${ICONS.stats}</span><span>סטטיסטיקות<small>ימים, ק״מ, מדינות ועוד</small></span><span></span></a>`;
 
   const far = TRIP.stops.reduce((a,s)=>Math.max(a,km(TRIP.home,s)),0);
-  document.getElementById("foot").textContent = `הנקודה הכי רחוקה במסלול: ${far.toLocaleString("he-IL")} ק״מ מהבית`;
+  document.getElementById("foot").textContent = `הנקודה הכי רחוקה במסלול: ${nf(far)} ק״מ מהבית`;
 }
-render(); setInterval(render, 60000);
+render(); drawMap(); setInterval(render, 60000);
 </script>
-
 </body>
 </html>

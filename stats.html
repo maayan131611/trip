@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+<title>הטיול של מעין · סטטיסטיקות</title>
+<meta name="description" content="המספרים של הטיול של מעין בדרום אמריקה">
+</head>
+<body>
+<div class="scene" aria-hidden="true">
+  <svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice">
+    <polygon class="p-back" points="0,330 40,250 70,290 110,200 150,280 190,215 230,300 270,230 310,290 350,210 400,280 400,520 0,520"/>
+    <polygon class="p-front" points="0,380 50,300 80,330 130,230 160,180 175,140 190,175 205,120 222,190 250,250 290,300 330,260 370,320 400,300 400,520 0,520"/>
+    <polygon class="p-snow" points="160,180 175,140 190,175 183,170 176,182 168,172"/>
+    <polygon class="p-snow" points="205,120 222,190 214,178 206,192 199,170 196,152"/>
+    <polygon class="p-snow" points="130,230 145,205 152,225 142,220"/>
+    <path class="p-shore" d="M0 470 Q100 440 200 455 T400 450 V520 H0Z"/>
+  </svg>
+</div>
+<main>
+  <a class="back" href="./">→ חזרה לדף הטיול</a>
+  <h1>במספרים</h1>
+  <p class="bio" id="sub"></p>
+
+  <div class="statgrid" id="grid"></div>
+
+  <section class="legs" aria-labelledby="legs-h">
+    <h2 class="statgrid-h" id="legs-h">קטעי המסלול (בקו אוויר)</h2>
+    <div id="legs"></div>
+  </section>
+  <footer>הסטטיסטיקות מתעדכנות בכל פעם שהדף מתעדכן מהדרך.</footer>
+</main>
+
+<script src="trip.js"></script>
+<script>
+const now = Date.now(), dep = new Date(TRIP.departure).getTime();
+const v = visited();
+const started = TRIP.current != null && now >= dep;
+const days = started ? Math.floor((now-dep)/86400000)+1 : 0;
+const path = [TRIP.home, ...v];
+const legs = path.slice(1).map((s,i)=>({ from: path[i].name, to: s.name, km: km(path[i], s) }));
+const totalKm = legs.reduce((a,l)=>a+l.km, 0);
+const countries = new Set(v.map(s=>s.country)).size;
+const photos = TRIP.stops.reduce((a,s)=>a+(s.photos?.length||0), 0);
+const south = v.reduce((a,s)=> !a || s.lat < a.lat ? s : a, null);
+const c = TRIP.counters;
+
+document.getElementById("sub").textContent = started
+  ? `יום ${days} בדרך. כל המספרים נכונים לעדכון האחרון מהטיול.`
+  : `הספירה מתחילה בנחיתה בבואנוס איירס ב-${fmtDate("2026-12-08")}. עד אז הכול באפס, ועוד ${Math.max(0,Math.ceil((dep-now)/86400000))} ימים ליציאה.`;
+
+const tiles = [
+  { v: nf(days), l: "ימים בדרך" },
+  { v: nf(countries), l: "מדינות" },
+  { v: nf(v.length), l: "מקומות" },
+  { v: nf(totalKm), l: "ק״מ בקו אוויר" },
+  { v: nf(photos), l: "תמונות בדף" },
+  { v: south ? latLabel(south) : "—", l: south ? `הכי דרומה: ${south.name}` : "הנקודה הכי דרומית" },
+  { v: nf(c.flights), l: "טיסות" },
+  { v: nf(c.nightBuses), l: "אוטובוסי לילה" },
+  { v: nf(c.treks), l: "טרקים" },
+  { v: nf(c.extreme), l: "אטרקציות אקסטרים" },
+  { v: nf(c.hostels), l: "הוסטלים" },
+  { v: v.length ? (days / v.length).toFixed(1) : "—", l: "ימים בממוצע בכל מקום" }
+];
+document.getElementById("grid").innerHTML = tiles.map(t=>`<div class="stat"><span class="v">${esc(t.v)}</span><span class="l">${esc(t.l)}</span></div>`).join("");
+
+document.getElementById("legs").innerHTML = legs.length
+  ? legs.map(l=>`<div class="leg"><span>${esc(l.from)} ← ${esc(l.to)}</span><span>${nf(l.km)} km</span></div>`).join("")
+  : `<p class="empty-note">עוד לא יצאנו לדרך. הקטע הראשון יהיה תל אביב ← בואנוס איירס, ${nf(km(TRIP.home, TRIP.stops[0]))} ק״מ.</p>`;
+</script>
+</body>
+</html>
