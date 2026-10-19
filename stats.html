@@ -5,34 +5,35 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Rubik:wght@400;500;700&family=VT323&display=swap">
 <link rel="stylesheet" href="style.css">
 <title>הטיול של מעין · סטטיסטיקות</title>
+<meta name="theme-color" content="#1d3fb8">
 <meta name="description" content="המספרים של הטיול של מעין בדרום אמריקה">
 </head>
 <body>
-<div class="scene" aria-hidden="true">
-  <svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice">
-    <polygon class="p-back" points="0,330 40,250 70,290 110,200 150,280 190,215 230,300 270,230 310,290 350,210 400,280 400,520 0,520"/>
-    <polygon class="p-front" points="0,380 50,300 80,330 130,230 160,180 175,140 190,175 205,120 222,190 250,250 290,300 330,260 370,320 400,300 400,520 0,520"/>
-    <polygon class="p-snow" points="160,180 175,140 190,175 183,170 176,182 168,172"/>
-    <polygon class="p-snow" points="205,120 222,190 214,178 206,192 199,170 196,152"/>
-    <polygon class="p-snow" points="130,230 145,205 152,225 142,220"/>
-    <path class="p-shore" d="M0 470 Q100 440 200 455 T400 450 V520 H0Z"/>
-  </svg>
-</div>
 <main>
-  <a class="back" href="./">→ חזרה לדף הטיול</a>
-  <h1>במספרים</h1>
-  <p class="bio" id="sub"></p>
+  <div>
+    <a class="back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>חזרה לכרטיס</a>
+    <h1 class="page-h">במספרים</h1>
+    <p class="sub" id="sub"></p>
+  </div>
 
-  <div class="statgrid" id="grid"></div>
-
-  <section class="legs" aria-labelledby="legs-h">
-    <h2 class="statgrid-h" id="legs-h">קטעי המסלול (בקו אוויר)</h2>
-    <div id="legs"></div>
+  <section class="punch" aria-labelledby="trip-h">
+    <h2 id="trip-h">הטיול</h2>
+    <div id="grid"></div>
   </section>
-  <footer>הסטטיסטיקות מתעדכנות בכל פעם שהדף מתעדכן מהדרך.</footer>
+
+  <section class="punch" aria-labelledby="punch-h">
+    <h2 id="punch-h">כרטיסיית ניקובים</h2>
+    <div id="counters"></div>
+  </section>
+
+  <section aria-labelledby="legs-h">
+    <h2 id="legs-h">קטעי המסלול</h2>
+    <ol class="stubs legs" id="legs"></ol>
+  </section>
+  <footer>המספרים מתעדכנים בכל פעם שהדף מתעדכן מהדרך. מרחקים בקו אוויר.</footer>
 </main>
 
 <script src="trip.js"></script>
@@ -53,25 +54,30 @@ document.getElementById("sub").textContent = started
   ? `יום ${days} בדרך. כל המספרים נכונים לעדכון האחרון מהטיול.`
   : `הספירה מתחילה בנחיתה בבואנוס איירס ב-${fmtDate("2026-12-08")}. עד אז הכול באפס, ועוד ${Math.max(0,Math.ceil((dep-now)/86400000))} ימים ליציאה.`;
 
-const tiles = [
-  { v: nf(days), l: "ימים בדרך" },
-  { v: nf(countries), l: "מדינות" },
-  { v: nf(v.length), l: "מקומות" },
-  { v: nf(totalKm), l: "ק״מ בקו אוויר" },
-  { v: nf(photos), l: "תמונות בדף" },
-  { v: south ? latLabel(south) : "—", l: south ? `הכי דרומה: ${south.name}` : "הנקודה הכי דרומית" },
-  { v: nf(c.flights), l: "טיסות" },
-  { v: nf(c.nightBuses), l: "אוטובוסי לילה" },
-  { v: nf(c.treks), l: "טרקים" },
-  { v: nf(c.extreme), l: "אטרקציות אקסטרים" },
-  { v: nf(c.hostels), l: "הוסטלים" },
-  { v: v.length ? (days / v.length).toFixed(1) : "—", l: "ימים בממוצע בכל מקום" }
-];
-document.getElementById("grid").innerHTML = tiles.map(t=>`<div class="stat"><span class="v">${esc(t.v)}</span><span class="l">${esc(t.l)}</span></div>`).join("");
+const row = (l, val) => `<div class="prow"><span class="l">${esc(l)}</span><span class="v dot">${esc(val)}</span></div>`;
+document.getElementById("grid").innerHTML = [
+  row("ימים בדרך", nf(days)),
+  row("מדינות", nf(countries)),
+  row("מקומות", nf(v.length)),
+  row("ק״מ בקו אוויר", nf(totalKm)),
+  row(south ? `הכי דרומה: ${south.name}` : "הנקודה הכי דרומית", south ? latLabel(south) : "—"),
+  row("ימים בממוצע בכל מקום", v.length ? (days / v.length).toFixed(1) : "—"),
+  row("תמונות בדף", nf(photos))
+].join("");
 
+/* counters as a conductor's punch card: one punched hole per time, 20 holes a row */
+const punch = (l, n) => { const cells = Math.max(10, Math.ceil(n/10)*10);
+  return `<div class="prow"><span class="l">${esc(l)}</span><span class="v dot">${nf(n)}</span>
+    <span class="holes" aria-hidden="true">${Array.from({length:cells},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("")}</span></div>`; };
+document.getElementById("counters").innerHTML = [
+  punch("טיסות", c.flights), punch("אוטובוסי לילה", c.nightBuses), punch("טרקים", c.treks),
+  punch("אטרקציות אקסטרים", c.extreme), punch("הוסטלים", c.hostels)
+].join("");
+
+const first = TRIP.stops[0];
 document.getElementById("legs").innerHTML = legs.length
-  ? legs.map(l=>`<div class="leg"><span>${esc(l.from)} ← ${esc(l.to)}</span><span>${nf(l.km)} km</span></div>`).join("")
-  : `<p class="empty-note">עוד לא יצאנו לדרך. הקטע הראשון יהיה תל אביב ← בואנוס איירס, ${nf(km(TRIP.home, TRIP.stops[0]))} ק״מ.</p>`;
+  ? legs.map(l=>`<li class="stub done"><span class="hole"></span><span class="nm"><b>${esc(l.from)} ← ${esc(l.to)}</b></span><span class="when dot">${nf(l.km)}<em>ק״מ</em></span></li>`).join("")
+  : `<li class="stub plan"><span class="hole"></span><span class="nm"><b>${esc(TRIP.home.name)} ← ${esc(first.name)}</b><span>הקטע הראשון, עוד לא יצא</span></span><span class="when dot">${nf(km(TRIP.home, first))}<em>ק״מ</em></span></li>`;
 </script>
 </body>
 </html>
