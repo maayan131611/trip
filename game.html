@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Rubik:wght@400;500;700&family=VT323&display=swap">
+<link rel="stylesheet" href="style.css">
+<title>הטיול של מעין · מעין בקופקבנה</title>
+<meta name="theme-color" content="#1d3fb8">
+<meta name="description" content="משחק קטן: כמה פעמים מעין יקפיץ את הכדור בחוף קופקבנה?">
+</head>
+<body>
+<main class="game-main">
+  <div>
+    <a class="back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>חזרה לכרטיס</a>
+    <h1 class="page-h">מעין בקופקבנה</h1>
+    <p class="sub">הזיזו את מעין עם האצבע ותנו לכדור לקפוץ לו על הראש. כל נגיעה נקודה, רק שלא ייפול לחול.</p>
+  </div>
+
+  <section class="punch game" aria-labelledby="game-h">
+    <h2 id="game-h" class="sr">המשחק</h2>
+    <div class="g-score">
+      <div><span class="lbl">נקודות</span><span class="dot" id="score">0</span></div>
+      <div><span class="lbl">שיא</span><span class="dot" id="best">0</span></div>
+    </div>
+    <div class="g-stage">
+      <canvas id="cv" aria-label="משחק הקפצת כדור: מעין מקפיץ כדור בחוף קופקבנה"></canvas>
+      <button class="g-over" id="over" type="button">
+        <span class="g-stamp" id="over-t">בואו נשחק</span>
+        <span class="g-hint" id="over-s">לחצו כדי להתחיל</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<script>
+/* Keepy-uppy: Maayan follows the pointer, the ball bounces off his head. */
+const W = 360, H = 540, GROUND = H - 64;
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const $score = document.getElementById("score"), $best = document.getElementById("best");
+const $over = document.getElementById("over"), $overT = document.getElementById("over-t"), $overS = document.getElementById("over-s");
+const face = new Image(); face.src = "avatar.jpg";
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let best = 0; try { best = +localStorage.getItem("maayan-keepy-best") || 0; } catch(e) {}
+$best.textContent = best;
+
+const me = { x: W/2, tx: W/2, vx: 0, headR: 30, headY: GROUND - 112 };
+const ball = { x: W/2, y: 120, vx: 0, vy: 0, r: 17, spin: 0 };
+let score = 0, playing = false, last = 0, bump = 0, sand = [];
+
+/* the background is static: paint it once */
+const bg = document.createElement("canvas");
+function paintBg(){
+  const s = devicePixelRatio || 1; bg.width = W*s; bg.height = H*s;
+  const b = bg.getContext("2d"); b.scale(s, s);
+  const sky = b.createLinearGradient(0, 0, 0, 300); sky.addColorStop(0, "#5fb6f0"); sky.addColorStop(1, "#bfe6fb");
+  b.fillStyle = sky; b.fillRect(0, 0, W, H);
+  b.fillStyle = "#ffd23f"; b.beginPath(); b.arc(70, 78, 30, 0, 7); b.fill();
+  /* Sugarloaf and its neighbour, across the bay */
+  b.fillStyle = "#2f7d55";
+  b.beginPath(); b.moveTo(170, 300); b.bezierCurveTo(190, 250, 205, 170, 245, 168); b.bezierCurveTo(285, 170, 290, 240, 300, 300); b.fill();
+  b.beginPath(); b.moveTo(250, 300); b.bezierCurveTo(280, 255, 300, 230, 330, 232); b.bezierCurveTo(350, 236, 360, 260, 370, 300); b.fill();
+  b.strokeStyle = "rgba(20,26,60,.5)"; b.lineWidth = 1; b.beginPath(); b.moveTo(245, 170); b.lineTo(330, 233); b.stroke();
+  /* sea */
+  b.fillStyle = "#1f8fc4"; b.fillRect(0, 296, W, 60);
+  b.strokeStyle = "rgba(255,255,255,.55)"; b.lineWidth = 2;
+  for (let y = 308; y < 352; y += 14){ b.beginPath(); for (let x = 0; x <= W; x += 6) b.lineTo(x, y + Math.sin(x/14 + y)*2); b.stroke(); }
+  /* sand */
+  b.fillStyle = "#f3d9a0"; b.fillRect(0, 352, W, GROUND - 352);
+  b.fillStyle = "rgba(170,120,50,.18)";
+  for (let i = 0; i < 90; i++){ b.beginPath(); b.arc((i*73)%W, 356 + (i*37)%(GROUND-358), 1.2, 0, 7); b.fill(); }
+  /* the Copacabana promenade: black-and-white wave stones */
+  b.fillStyle = "#f7f4ec"; b.fillRect(0, GROUND, W, H - GROUND);
+  b.fillStyle = "#141a3c";
+  for (let row = 0; row < 3; row++){
+    const y0 = GROUND + 6 + row*20;
+    b.beginPath(); b.moveTo(0, y0);
+    for (let x = 0; x <= W; x += 4) b.lineTo(x, y0 + Math.sin(x/18 + row*Math.PI)*5);
+    for (let x = W; x >= 0; x -= 4) b.lineTo(x, y0 + 9 + Math.sin(x/18 + row*Math.PI)*5);
+    b.fill();
+  }
+  b.fillStyle = "#141a3c"; b.fillRect(0, GROUND, W, 3);
+}
+
+function fit(){
+  const s = devicePixelRatio || 1; cv.width = W*s; cv.height = H*s;
+  ctx.setTransform(s, 0, 0, s, 0, 0); paintBg(); draw();
+}
+
+function reset(){
+  score = 0; $score.textContent = 0;
+  me.x = me.tx = W/2; me.vx = 0;
+  ball.x = W/2 + (Math.random() < .5 ? -14 : 14); ball.y = 110; ball.vx = 0; ball.vy = 0; sand = [];
+}
+function start(){ reset(); playing = true; $over.hidden = true; last = performance.now(); requestAnimationFrame(loop); }
+function end(){
+  playing = false;
+  if (score > best){ best = score; $best.textContent = best; try { localStorage.setItem("maayan-keepy-best", best); } catch(e) {} }
+  $overT.textContent = score === 0 ? "אופס!" : `${score} נגיעות`;
+  $overS.textContent = score > 0 && score === best ? "שיא חדש! לחצו כדי לשחק שוב" : "לחצו כדי לשחק שוב";
+  $over.hidden = false; setTimeout(() => $over.focus(), 0);
+}
+
+function step(dt){
+  /* Maayan eases toward the finger; his speed feeds the ball's sideways kick */
+  const px = me.x; me.x += (me.tx - me.x) * Math.min(1, .35*dt);
+  me.x = Math.max(me.headR, Math.min(W - me.headR, me.x)); me.vx = (me.x - px) / dt;
+
+  const g = .32 + Math.min(score, 40) * .006;
+  ball.vy += g*dt; ball.x += ball.vx*dt; ball.y += ball.vy*dt; ball.spin += ball.vx*.05*dt;
+  if (ball.x < ball.r){ ball.x = ball.r; ball.vx = Math.abs(ball.vx)*.8; }
+  if (ball.x > W - ball.r){ ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx)*.8; }
+  if (ball.y < ball.r){ ball.y = ball.r; ball.vy = Math.abs(ball.vy)*.5; }
+
+  const dx = ball.x - me.x, dy = ball.y - me.headY, d = Math.hypot(dx, dy);
+  if (ball.vy > 0 && d < ball.r + me.headR && dy < 8){
+    ball.vy = -(10.5 + Math.random()*1.5 + Math.min(score, 40)*.07);
+    ball.vx = dx*.16 + me.vx*.35 + (Math.random() - .5)*1.2;
+    ball.y = me.headY - (ball.r + me.headR) * Math.max(.6, -dy/d || 1);
+    score++; $score.textContent = score; bump = 1;
+  }
+  bump = Math.max(0, bump - .12*dt);
+
+  if (ball.y + ball.r >= GROUND){
+    ball.y = GROUND - ball.r;
+    for (let i = 0; i < 14; i++) sand.push({ x: ball.x, y: GROUND - 2, vx: (Math.random()-.5)*5, vy: -Math.random()*4, life: 1 });
+    end();
+  }
+}
+
+function drawMaayan(){
+  const x = me.x, hy = me.headY + bump*4, lean = Math.max(-.25, Math.min(.25, me.vx*.04));
+  ctx.save(); ctx.translate(x, GROUND); ctx.rotate(lean*.3);
+  /* legs, socks, boots */
+  ctx.lineCap = "round"; ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(-9, -36); ctx.lineTo(-11, -6); ctx.moveTo(9, -36); ctx.lineTo(11, -6); ctx.stroke();
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.moveTo(-11, -18); ctx.lineTo(-11, -6); ctx.moveTo(11, -18); ctx.lineTo(11, -6); ctx.stroke();
+  ctx.fillStyle = "#141a3c"; ctx.beginPath(); ctx.ellipse(-13, -3, 9, 4, 0, 0, 7); ctx.ellipse(13, -3, 9, 4, 0, 0, 7); ctx.fill();
+  /* Brazil kit: blue shorts, yellow shirt with green trim */
+  ctx.fillStyle = "#1d3fb8"; ctx.beginPath(); ctx.roundRect(-20, -50, 40, 18, 4); ctx.fill();
+  ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.roundRect(-22, -GROUND + hy + me.headR - 4, 44, (GROUND - hy - me.headR) - 46, 8); ctx.fill();
+  ctx.strokeStyle = "#1b9a59"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-22, -50); ctx.lineTo(22, -50); ctx.stroke();
+  /* arms up, celebrating a little on every touch */
+  ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 7; const ay = -GROUND + hy + me.headR + 6, up = 10 + bump*14;
+  ctx.beginPath(); ctx.moveTo(-20, ay); ctx.lineTo(-34, ay + 20 - up); ctx.moveTo(20, ay); ctx.lineTo(34, ay + 20 - up); ctx.stroke();
+  ctx.fillStyle = "#141a3c"; ctx.font = "700 15px VT323, monospace"; ctx.textAlign = "center"; ctx.fillText("10", 0, ay + 22);
+  ctx.restore();
+  /* the head is the real photo */
+  ctx.save(); ctx.beginPath(); ctx.arc(x, hy, me.headR, 0, 7); ctx.closePath();
+  ctx.fillStyle = "#3e4670"; ctx.fill(); ctx.clip();
+  if (face.complete && face.naturalWidth){
+    const s = Math.max(me.headR*2 / face.naturalWidth, me.headR*2 / face.naturalHeight)*1.15;
+    ctx.drawImage(face, x - face.naturalWidth*s/2, hy - face.naturalHeight*s/2.4, face.naturalWidth*s, face.naturalHeight*s);
+  }
+  ctx.restore();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x, hy, me.headR, 0, 7); ctx.stroke();
+}
+
+function drawBall(){
+  const { x, y, r } = ball;
+  ctx.fillStyle = "rgba(20,26,60,.18)";
+  const sh = 1 - Math.min(1, (GROUND - y)/400);
+  ctx.beginPath(); ctx.ellipse(x, GROUND - 2, r*(.5 + sh*.6), 4, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ball.spin);
+  ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#141a3c"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#141a3c";
+  const pent = (cx, cy, s) => { ctx.beginPath(); for (let i = 0; i < 5; i++){ const a = i*1.2566 - 1.5708; ctx.lineTo(cx + Math.cos(a)*s, cy + Math.sin(a)*s); } ctx.fill(); };
+  pent(0, 0, r*.36);
+  for (let i = 0; i < 5; i++){ const a = i*1.2566 - 1.5708; ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r - 1, 0, 7); ctx.clip(); pent(Math.cos(a)*r*.95, Math.sin(a)*r*.95, r*.3); ctx.restore(); }
+  ctx.restore();
+}
+
+function draw(){
+  ctx.drawImage(bg, 0, 0, W, H);
+  drawMaayan(); drawBall();
+  ctx.fillStyle = "#e0b86a";
+  sand = sand.filter(p => p.life > 0);
+  sand.forEach(p => { ctx.globalAlpha = p.life; ctx.fillRect(p.x, p.y, 3, 3); }); ctx.globalAlpha = 1;
+}
+
+function loop(t){
+  const dt = Math.min(2.5, (t - last) / 16.67); last = t;
+  if (playing) step(dt);
+  sand.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += .3*dt; p.life -= .03*dt; });
+  draw();
+  if (playing || sand.length) requestAnimationFrame(loop);
+}
+
+const toGame = e => { const r = cv.getBoundingClientRect(); return (e.clientX - r.left) / r.width * W; };
+cv.addEventListener("pointerdown", e => { me.tx = toGame(e); });
+cv.addEventListener("pointermove", e => { if (e.pointerType === "mouse" || e.buttons || e.pointerType === "touch") me.tx = toGame(e); });
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") me.tx = Math.max(0, me.tx - 40);
+  if (e.key === "ArrowRight") me.tx = Math.min(W, me.tx + 40);
+});
+$over.addEventListener("click", start);
+$over.addEventListener("pointerdown", e => { me.tx = toGame(e); });
+
+face.onload = draw;
+addEventListener("resize", fit);
+reset(); fit();
+</script>
+</body>
+</html>
