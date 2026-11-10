@@ -5,40 +5,40 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Rubik:wght@400;500;700&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Chakra+Petch:wght@600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 <title>הטיול של מעין</title>
-<meta name="theme-color" content="#1d3fb8">
+<meta name="theme-color" content="#05080f">
 <meta name="description" content="איפה מעין עכשיו: המסלול בדרום אמריקה">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 </head>
 <body>
 <main>
-  <div class="ticket-wrap">
-  <article class="ticket" aria-labelledby="t-title">
-    <div class="t-main">
-      <header class="t-head">
-        <h1 id="t-title">הטיול של מעין</h1>
-        <span class="code dot">TLV · MAD · EZE &nbsp;07.12.26</span>
-      </header>
-      <div class="t-route" aria-live="polite">
-        <div class="f from"><span class="lbl" id="from-l">יוצא מ</span><span class="city" id="from">…</span></div>
-        <svg viewBox="0 0 34 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 10H3M11 2L3 10l8 8"/></svg>
-        <div class="f to"><span class="lbl" id="to-l">אל</span><span class="city" id="to">…</span></div>
-      </div>
-      <dl class="t-fields" id="fields"></dl>
-    </div>
-    <aside class="t-stub" aria-label="פרטי הנוסע">
+  <header class="hero">
+    <div class="who">
       <div class="photo"><img src="avatar.jpg" alt="מעין"></div>
-      <dl>
-        <div><dt>נוסע</dt><dd>מעין</dd></div>
-        <div><dt>יעד</dt><dd>דרום אמריקה</dd></div>
-      </dl>
-      <p class="fine" id="bio">מעין המטורלל בדרום אמריקה. לפני שאתם שואלים: לא יודע לאן אלך, לא יודע מתי אחזור, והאמת שגם לא אכפת לי.</p>
-    </aside>
-    <p class="stamp" id="stamp" aria-hidden="true"></p>
+      <div>
+        <h1 id="t-title">הטיול של מעין</h1>
+        <p class="stamp" id="stamp" aria-hidden="true"></p>
+      </div>
+    </div>
+    <p class="fine" id="bio">מעין המטורלל בדרום אמריקה. לפני שאתם שואלים: לא יודע לאן אלך, לא יודע מתי אחזור, והאמת שגם לא אכפת לי.</p>
+  </header>
+
+  <article class="now glass" aria-labelledby="t-title">
+    <div class="t-route" aria-live="polite">
+      <div class="f from"><span class="lbl" id="from-l">יוצא מ</span><span class="city" id="from">…</span></div>
+      <svg viewBox="0 0 34 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 10H3M11 2L3 10l8 8"/></svg>
+      <div class="f to"><span class="lbl" id="to-l">אל</span><span class="city" id="to">…</span></div>
+    </div>
+    <div class="clock" id="clock" role="timer" aria-label="זמן עד היציאה" hidden>
+      <div class="cell"><b id="cd">0</b><span>ימים</span></div>
+      <div class="cell"><b id="ch">00</b><span>שעות</span></div>
+      <div class="cell"><b id="cm">00</b><span>דקות</span></div>
+      <div class="cell"><b id="cs">00</b><span>שניות</span></div>
+    </div>
+    <dl class="t-fields" id="fields"></dl>
   </article>
-  </div>
 
   <section aria-labelledby="route-h">
     <h2 id="route-h">המסלול</h2>
@@ -71,10 +71,10 @@
 <script src="trip.js"></script>
 <script>
 const ICONS = {
-  map:'<svg viewBox="0 0 24 24" fill="none" stroke="#1d3fb8" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
-  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="#d32638" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#d32638"/></svg>',
-  ball:'<svg viewBox="0 0 24 24" fill="none" stroke="#1b9a59" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.8 2.8-1.5 4.4H9.7l-1.5-4.4z"/><path d="M12 8V3.2M15.8 10.8l4.6-1.5M14.3 15.2l2.8 3.9M9.7 15.2l-2.8 3.9M8.2 10.8L3.6 9.3"/></svg>',
-  stats:'<svg viewBox="0 0 24 24" fill="none" stroke="#141a3c" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>'
+  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>',
+  ball:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.8 2.8-1.5 4.4H9.7l-1.5-4.4z"/><path d="M12 8V3.2M15.8 10.8l4.6-1.5M14.3 15.2l2.8 3.9M9.7 15.2l-2.8 3.9M8.2 10.8L3.6 9.3"/></svg>',
+  stats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>'
 };
 
 /* ---------- Lightbox ---------- */
@@ -112,14 +112,14 @@ function drawMap(){
   const el = document.getElementById("map");
   if (typeof L === "undefined"){ el.hidden = true; document.getElementById("map-hint").textContent = "המפה לא נטענה. נסו לרענן את הדף."; return; }
   const map = L.map(el, { scrollWheelZoom:false, attributionControl:true });
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
   const pts = TRIP.stops.map(s=>[s.lat,s.lng]);
   const reached = TRIP.current==null ? 0 : TRIP.current+1;
-  if (reached > 1) L.polyline(pts.slice(0,reached), { color:"#d32638", weight:4 }).addTo(map);
+  if (reached > 1) L.polyline(pts.slice(0,reached), { color:"#49e6ff", weight:4 }).addTo(map);
   const planFrom = Math.max(reached-1, 0);
-  if (pts.length - planFrom > 1) L.polyline(pts.slice(planFrom), { color:"#1d3fb8", weight:3, dashArray:"6 8", opacity:.8 }).addTo(map);
+  if (pts.length - planFrom > 1) L.polyline(pts.slice(planFrom), { color:"#9aaad0", weight:3, dashArray:"6 8", opacity:.9 }).addTo(map);
   TRIP.stops.forEach((s,i)=>{
     const st = stopState(i), n = s.photos?.length || 0;
     const icon = n
@@ -151,9 +151,9 @@ function render(){
     $("to-l").textContent = "אל"; $("to").textContent = first.name;
     const dt = new Date(TRIP.departure);
     $("fields").innerHTML = field("יציאה", dotDate(dt), dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jerusalem"}))
-      + field(now < dep ? "ימים ליציאה" : "סטטוס", now < dep ? nf(days) : "בטיסה", "", now >= dep)
+      + (now < dep ? field("נחיתה", dotDate(first.from)) : field("סטטוס", "בטיסה", "", true))
       + field("מרחק", nf(km(TRIP.home, first)), "ק״מ");
-    $("stamp").innerHTML = now < dep ? `טרם יצא<span class="dot">${today}</span>` : `בדרך<span class="dot">${today}</span>`;
+    $("stamp").innerHTML = now < dep ? `עוד לא יצא<span class="dot">${today}</span>` : `באוויר<span class="dot">${today}</span>`;
   } else {
     const s = TRIP.stops[TRIP.current];
     const day = Math.floor((now-dep)/86400000)+1;
@@ -189,7 +189,23 @@ function render(){
   const far = TRIP.stops.reduce((a,s)=>Math.max(a,km(TRIP.home,s)),0);
   $("foot").textContent = `הנקודה הכי רחוקה במסלול: ${nf(far)} ק״מ מהבית`;
 }
+/* ---------- Live countdown until departure ---------- */
+(function(){
+  const dep = new Date(TRIP.departure).getTime(), box = document.getElementById("clock");
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const put = (id, v, pad) => { const el = document.getElementById(id), t = pad ? String(v).padStart(2,"0") : String(v);
+    if (el.textContent === t) return; el.textContent = t;
+    if (!calm){ el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick"); } };
+  function tick(){
+    const left = dep - Date.now();
+    if (TRIP.current != null || left <= 0){ box.hidden = true; clearInterval(id); return; }
+    const s = Math.floor(left/1000); box.hidden = false;
+    put("cd", Math.floor(s/86400)); put("ch", Math.floor(s%86400/3600), 1); put("cm", Math.floor(s%3600/60), 1); put("cs", s%60, 1);
+  }
+  const id = setInterval(tick, 1000); tick();
+})();
 render(); drawMap(); setInterval(render, 60000);
 </script>
+<script src="fx.js"></script>
 </body>
 </html>

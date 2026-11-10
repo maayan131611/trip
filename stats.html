@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Rubik:wght@400;500;700&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Chakra+Petch:wght@600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 <title>הטיול של מעין · סטטיסטיקות</title>
-<meta name="theme-color" content="#1d3fb8">
+<meta name="theme-color" content="#05080f">
 <meta name="description" content="המספרים של הטיול של מעין בדרום אמריקה">
 </head>
 <body>
 <main>
   <div>
-    <a class="back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>חזרה לכרטיס</a>
+    <a class="back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>חזרה לדף הראשי</a>
     <h1 class="page-h">במספרים</h1>
     <p class="sub" id="sub"></p>
   </div>
@@ -25,7 +25,7 @@
   </section>
 
   <section class="punch" aria-labelledby="punch-h">
-    <h2 id="punch-h">כרטיסיית ניקובים</h2>
+    <h2 id="punch-h">מונים</h2>
     <div id="counters"></div>
   </section>
 
@@ -65,7 +65,7 @@ document.getElementById("grid").innerHTML = [
   row("תמונות בדף", nf(photos))
 ].join("");
 
-/* counters as a conductor's punch card: one punched hole per time, 20 holes a row */
+/* counters as rows of signal lights: one lit dot per time */
 const punch = (l, n) => { const cells = Math.max(10, Math.ceil(n/10)*10);
   return `<div class="prow"><span class="l">${esc(l)}</span><span class="v dot">${nf(n)}</span>
     <span class="holes" aria-hidden="true">${Array.from({length:cells},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("")}</span></div>`; };
@@ -79,5 +79,6 @@ document.getElementById("legs").innerHTML = legs.length
   ? legs.map(l=>`<li class="stub done"><span class="hole"></span><span class="nm"><b>${esc(l.from)} ← ${esc(l.to)}</b></span><span class="when dot">${nf(l.km)}<em>ק״מ</em></span></li>`).join("")
   : `<li class="stub plan"><span class="hole"></span><span class="nm"><b>${esc(TRIP.home.name)} ← ${esc(first.name)}</b><span>הקטע הראשון, עוד לא יצא</span></span><span class="when dot">${nf(km(TRIP.home, first))}<em>ק״מ</em></span></li>`;
 </script>
+<script src="fx.js"></script>
 </body>
 </html>
