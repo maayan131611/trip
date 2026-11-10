@@ -8,8 +8,8 @@ const TRIP = {
   current: null,
   lastUpdate: null,
   stops: [
-    { name: "בואנוס איירס", country: "ארגנטינה", lat: -34.6037, lng: -58.3816, from: "2026-12-08", to: null, plan: true, photos: [] },
-    { name: "אושוואיה",      country: "ארגנטינה", lat: -54.8019, lng: -68.3030, from: "2026-12-11", to: null, plan: true, photos: [] }
+    { name: "בואנוס איירס", country: "ארגנטינה", lat: -34.6037, lng: -58.3816, from: "2026-12-08", to: "2026-12-15", plan: true, photos: [] },
+    { name: "אושוואיה",      country: "ארגנטינה", lat: -54.8019, lng: -68.3030, from: "2026-12-15", to: "2026-12-22", plan: true, photos: [] }
   ],
   counters: { flights: 0, nightBuses: 0, treks: 0, extreme: 0, hostels: 0 },
   links: [
