@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Chakra+Petch:wght@600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<title>הטיול של מעין · גלריה</title>
+<meta name="theme-color" content="#05080f">
+<meta name="description" content="כל התמונות מהטיול של מעין בדרום אמריקה, לפי מקומות">
+</head>
+<body>
+<main>
+  <div>
+    <a class="back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>חזרה לדף הראשי</a>
+    <h1 class="page-h">גלריה</h1>
+    <p class="sub" id="sub"></p>
+  </div>
+  <div id="albums" class="albums"></div>
+</main>
+
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lb-title">
+  <div class="lb-top"><span class="lb-title" id="lb-title"></span><button id="lb-x" aria-label="סגירה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="lb-stage">
+    <button id="lb-prev" aria-label="התמונה הקודמת"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    <img id="lb-img" alt="">
+    <button id="lb-next" aria-label="התמונה הבאה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+  </div>
+  <div><p class="lb-cap" id="lb-cap"></p><p class="lb-cap lb-count" id="lb-count"></p></div>
+</div>
+
+<script src="trip.js"></script>
+<script>
+/* Every photo of the trip in one place, grouped by stop, newest stop first.
+   Photos come only from TRIP.stops[i].photos, so adding a photo there shows it here and on the map. */
+const $ = id => document.getElementById(id);
+const albums = TRIP.stops.map((s,i)=>({ s, i })).filter(a => a.s.photos?.length).reverse();
+const all = albums.flatMap(a => a.s.photos.map(p => ({ ...p, stop: a.s.name })));
+const dot = d => { const x = new Date(d); return `${String(x.getDate()).padStart(2,"0")}.${String(x.getMonth()+1).padStart(2,"0")}`; };
+
+if (!all.length){
+  $("sub").textContent = "כאן יופיעו כל התמונות מהדרך, לפי מקומות.";
+  const first = TRIP.stops[0];
+  $("albums").innerHTML = `<p class="empty-note">עוד אין תמונות. הראשונות יגיעו מ${esc(first.name)} אחרי הנחיתה ב-<span class="dot">${dot(first.from)}</span>.</p>`;
+} else {
+  $("sub").innerHTML = `<span class="dot">${all.length}</span> תמונות מ-<span class="dot">${albums.length}</span> מקומות. לחצו על תמונה כדי להגדיל.`;
+  let k = 0;
+  $("albums").innerHTML = albums.map(a => `
+    <section class="album" aria-labelledby="al-${a.i}">
+      <h2 id="al-${a.i}">${esc(a.s.name)} <span class="al-meta"><span>${esc(a.s.country)}</span> <span class="dot">${dot(a.s.from)}${a.s.to ? " – " + dot(a.s.to) : ""}</span></span></h2>
+      <div class="thumbs">${a.s.photos.map(p => `<button class="thumb" data-k="${k++}" aria-label="${esc(p.caption || a.s.name)}"><img src="${esc(p.src)}" alt="" loading="lazy"></button>`).join("")}</div>
+    </section>`).join("");
+  document.querySelectorAll(".thumb").forEach(b => b.onclick = () => open(+b.dataset.k));
+}
+
+/* ---------- Lightbox over the whole trip ---------- */
+let cur = 0, opener = null;
+function open(k){ cur = k; opener = document.activeElement; $("lb").hidden = false; show(); $("lb-x").focus(); }
+function show(){
+  const p = all[cur];
+  $("lb-title").textContent = p.stop;
+  $("lb-img").src = p.src; $("lb-img").alt = p.caption || p.stop;
+  $("lb-cap").textContent = p.caption || "";
+  $("lb-count").textContent = `${cur+1} / ${all.length}`;
+  $("lb-prev").hidden = $("lb-next").hidden = all.length < 2;
+}
+const go = d => { cur = (cur + d + all.length) % all.length; show(); };
+const close = () => { $("lb").hidden = true; opener?.focus?.(); };
+$("lb-x").onclick = close; $("lb-prev").onclick = () => go(-1); $("lb-next").onclick = () => go(1);
+$("lb").addEventListener("click", e => { if (e.target === $("lb")) close(); });
+document.addEventListener("keydown", e => {
+  if ($("lb").hidden) return;
+  if (e.key === "Escape") close();
+  if (e.key === "ArrowLeft") go(1);    /* RTL: left = next */
+  if (e.key === "ArrowRight") go(-1);
+});
+let tx = null; $("lb").addEventListener("touchstart", e => tx = e.touches[0].clientX, { passive:true });
+$("lb").addEventListener("touchend", e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 40) go(dx > 0 ? 1 : -1); tx = null; });
+</script>
+<script src="fx.js"></script>
+</body>
+</html>

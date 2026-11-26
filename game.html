@@ -7,28 +7,33 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Chakra+Petch:wght@600;700&display=swap">
 <link rel="stylesheet" href="style.css">
-<title>הטיול של מעין · מעין בקופקבנה</title>
+<title>הטיול של מעין · לברוח מהם</title>
 <meta name="theme-color" content="#05080f">
-<meta name="description" content="משחק קטן: כמה פעמים מעין יקפיץ את הכדור בחוף קופקבנה?">
+<meta name="description" content="משחק ריצה: מעין בורח ברחובות בואנוס איירס. מי רודף אחריו?">
 </head>
 <body>
 <main class="game-main">
   <div>
     <a class="back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>חזרה לדף הראשי</a>
-    <h1 class="page-h">מעין בקופקבנה</h1>
-    <p class="sub">הזיזו את מעין עם האצבע ותנו לכדור לקפוץ לו על הראש. כל נגיעה נקודה, רק שלא ייפול לחול.</p>
+    <h1 class="page-h">לברוח מהם</h1>
+    <p class="sub">החליקו לצדדים לעבור נתיב, למעלה לקפוץ, למטה להתכופף. אספו אמפנדות.</p>
   </div>
+
+  <fieldset class="chasers" id="chasers">
+    <legend class="sr">מי רודף אחרי מעין?</legend>
+  </fieldset>
 
   <section class="punch game" aria-labelledby="game-h">
     <h2 id="game-h" class="sr">המשחק</h2>
-    <div class="g-score">
-      <div><span class="lbl">נקודות</span><span class="dot" id="score">0</span></div>
+    <div class="g-score g-score-3">
+      <div><span class="lbl">מטרים</span><span class="dot" id="score">0</span></div>
+      <div><span class="lbl">אמפנדות</span><span class="dot" id="coins">0</span></div>
       <div><span class="lbl">שיא</span><span class="dot" id="best">0</span></div>
     </div>
     <div class="g-stage">
-      <canvas id="cv" aria-label="משחק הקפצת כדור: מעין מקפיץ כדור בחוף קופקבנה"></canvas>
+      <canvas id="cv" aria-label="משחק ריצה: מעין בורח ברחוב בבואנוס איירס"></canvas>
       <button class="g-over" id="over" type="button">
-        <span class="g-stamp" id="over-t">בואו נשחק</span>
+        <span class="g-stamp" id="over-t">בואו נברח</span>
         <span class="g-hint" id="over-s">לחצו כדי להתחיל</span>
       </button>
     </div>
@@ -36,172 +41,364 @@
 </main>
 
 <script>
-/* Keepy-uppy: Maayan follows the pointer, the ball bounces off his head. */
-const W = 360, H = 540, GROUND = H - 64;
+/* Endless runner on a Buenos Aires street, seen from behind Maayan.
+   World: x across the road (lanes at -100/0/100), z away from the camera, h up from the asphalt.
+   Everything is drawn with canvas shapes; the only image is Maayan's avatar. */
+const W = 360, H = 540, HZ = 200, GY = 455, F = 320, LW = 100, ROAD = 165, WALK = 225, ZMAX = 2600;
 const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
-const $score = document.getElementById("score"), $best = document.getElementById("best");
-const $over = document.getElementById("over"), $overT = document.getElementById("over-t"), $overS = document.getElementById("over-s");
+const $ = id => document.getElementById(id);
 const face = new Image(); face.src = "avatar.jpg";
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-let best = 0; try { best = +localStorage.getItem("maayan-keepy-best") || 0; } catch(e) {}
-$best.textContent = best;
+const CHASERS = {
+  cop:  { name: "שוטר קולומביאני", say: ["¡Alto ahí!", "¡Pare, mijo!", "¡Documentos!"], caught: "השוטר תפס אותך", draw: drawCop },
+  chola:{ name: "צ'ולה מתאבקת", say: ["¡Vení acá!", "¡Te agarro, gringo!", "¡A la lona!"], caught: "הצ'ולה הפילה אותך לזירה", draw: drawChola },
+  ima:  { name: "אמא פולנייה", say: ["תלבש סוודר!", "לפחות תתקשר!", "אכלת משהו?"], caught: "אמא תפסה אותך. לובשים סוודר", draw: drawIma }
+};
+let who = "cop"; try { who = CHASERS[localStorage.getItem("maayan-run-chaser")] ? localStorage.getItem("maayan-run-chaser") : "cop"; } catch(e) {}
+$("chasers").insertAdjacentHTML("beforeend", Object.entries(CHASERS).map(([k, c]) =>
+  `<label class="chip"><input type="radio" name="chaser" value="${k}" ${k === who ? "checked" : ""}><span>${c.name}</span></label>`).join(""));
+$("chasers").addEventListener("change", e => { who = e.target.value; try { localStorage.setItem("maayan-run-chaser", who); } catch(e) {} if (!playing) draw(); });
 
-const me = { x: W/2, tx: W/2, vx: 0, headR: 30, headY: GROUND - 112 };
-const ball = { x: W/2, y: 120, vx: 0, vy: 0, r: 17, spin: 0 };
-let score = 0, playing = false, last = 0, bump = 0, sand = [];
+let best = 0; try { best = +localStorage.getItem("maayan-run-best") || 0; } catch(e) {}
+$("best").textContent = best;
 
-/* the background is static: paint it once */
-const bg = document.createElement("canvas");
-function paintBg(){
-  const s = devicePixelRatio || 1; bg.width = W*s; bg.height = H*s;
-  const b = bg.getContext("2d"); b.scale(s, s);
-  const sky = b.createLinearGradient(0, 0, 0, 300); sky.addColorStop(0, "#5fb6f0"); sky.addColorStop(1, "#bfe6fb");
-  b.fillStyle = sky; b.fillRect(0, 0, W, H);
-  b.fillStyle = "#ffd23f"; b.beginPath(); b.arc(70, 78, 30, 0, 7); b.fill();
-  /* Sugarloaf and its neighbour, across the bay */
-  b.fillStyle = "#2f7d55";
-  b.beginPath(); b.moveTo(170, 300); b.bezierCurveTo(190, 250, 205, 170, 245, 168); b.bezierCurveTo(285, 170, 290, 240, 300, 300); b.fill();
-  b.beginPath(); b.moveTo(250, 300); b.bezierCurveTo(280, 255, 300, 230, 330, 232); b.bezierCurveTo(350, 236, 360, 260, 370, 300); b.fill();
-  b.strokeStyle = "rgba(20,26,60,.5)"; b.lineWidth = 1; b.beginPath(); b.moveTo(245, 170); b.lineTo(330, 233); b.stroke();
-  /* sea */
-  b.fillStyle = "#1f8fc4"; b.fillRect(0, 296, W, 60);
-  b.strokeStyle = "rgba(255,255,255,.55)"; b.lineWidth = 2;
-  for (let y = 308; y < 352; y += 14){ b.beginPath(); for (let x = 0; x <= W; x += 6) b.lineTo(x, y + Math.sin(x/14 + y)*2); b.stroke(); }
-  /* sand */
-  b.fillStyle = "#f3d9a0"; b.fillRect(0, 352, W, GROUND - 352);
-  b.fillStyle = "rgba(170,120,50,.18)";
-  for (let i = 0; i < 90; i++){ b.beginPath(); b.arc((i*73)%W, 356 + (i*37)%(GROUND-358), 1.2, 0, 7); b.fill(); }
-  /* the Copacabana promenade: black-and-white wave stones */
-  b.fillStyle = "#f7f4ec"; b.fillRect(0, GROUND, W, H - GROUND);
-  b.fillStyle = "#141a3c";
-  for (let row = 0; row < 3; row++){
-    const y0 = GROUND + 6 + row*20;
-    b.beginPath(); b.moveTo(0, y0);
-    for (let x = 0; x <= W; x += 4) b.lineTo(x, y0 + Math.sin(x/18 + row*Math.PI)*5);
-    for (let x = W; x >= 0; x -= 4) b.lineTo(x, y0 + 9 + Math.sin(x/18 + row*Math.PI)*5);
-    b.fill();
-  }
-  b.fillStyle = "#141a3c"; b.fillRect(0, GROUND, W, 3);
-}
+/* ---------- projection ---------- */
+const S = z => F / (F + z);
+const PX = (z, x) => W/2 + x * S(z);
+const PY = (z, h = 0) => HZ + (GY - HZ) * S(z) - h * S(z);
 
-function fit(){
-  const s = devicePixelRatio || 1; cv.width = W*s; cv.height = H*s;
-  ctx.setTransform(s, 0, 0, s, 0, 0); paintBg(); draw();
-}
+/* ---------- state ---------- */
+const me = { lane: 0, x: 0, h: 0, vh: 0, slide: 0, run: 0, prevLane: 0 };
+let objs = [], dist = 0, speed = 9, coins = 0, nextRow = 0, chase = 1, stumble = 0, slow = 0, playing = false, last = 0, flash = 0, sayIdx = 0, sayT = 0;
 
 function reset(){
-  score = 0; $score.textContent = 0;
-  me.x = me.tx = W/2; me.vx = 0;
-  ball.x = W/2 + (Math.random() < .5 ? -14 : 14); ball.y = 110; ball.vx = 0; ball.vy = 0; sand = [];
+  Object.assign(me, { lane: 0, x: 0, h: 0, vh: 0, slide: 0, run: 0, prevLane: 0 });
+  objs = []; dist = 0; speed = 9; coins = 0; nextRow = 900; chase = 1; stumble = 0; slow = 0; flash = 0; sayT = 0;
+  $("score").textContent = 0; $("coins").textContent = 0;
 }
 function start(){ reset(); playing = true; $over.hidden = true; last = performance.now(); requestAnimationFrame(loop); }
+const $over = $("over");
 function end(){
-  playing = false;
-  if (score > best){ best = score; $best.textContent = best; try { localStorage.setItem("maayan-keepy-best", best); } catch(e) {} }
-  $overT.textContent = score === 0 ? "אופס!" : `${score} נגיעות`;
-  $overS.textContent = score > 0 && score === best ? "שיא חדש! לחצו כדי לשחק שוב" : "לחצו כדי לשחק שוב";
-  $over.hidden = false; setTimeout(() => $over.focus(), 0);
+  playing = false; chase = 1;
+  const m = Math.floor(dist / 40);
+  if (m > best){ best = m; $("best").textContent = best; try { localStorage.setItem("maayan-run-best", best); } catch(e) {} }
+  $("over-t").textContent = CHASERS[who].caught;
+  $("over-s").textContent = `${m} מטרים · ${coins} אמפנדות` + (m > 0 && m === best ? " · שיא חדש!" : "") + " · לחצו לעוד ריצה";
+  draw(); $over.hidden = false; setTimeout(() => $over.focus(), 0);
 }
+
+/* ---------- spawning: every row leaves at least one lane open ---------- */
+function row(){
+  const free = [-1, 0, 1][Math.floor(Math.random() * 3)];
+  for (const lane of [-1, 0, 1]){
+    if (lane === free){
+      if (Math.random() < .7) for (let i = 0; i < 5; i++) objs.push({ t: "coin", lane, z: ZMAX + i * 70, len: 10, h: 0 });
+      continue;
+    }
+    const r = Math.random();
+    const t = r < .25 ? null : r < .5 ? "bar" : r < .72 ? "sign" : "bus";
+    if (t) objs.push({ t, lane, z: ZMAX, len: t === "bus" ? 380 : 24 });
+  }
+  nextRow = 430 + Math.random() * 300;
+}
+
+function hit(o){
+  o.hit = true;
+  if (o.t === "bus" && o.z > -6){ flash = 1; return end(); }   /* straight into the front of a colectivo */
+  if (o.t === "bus"){ me.lane = me.prevLane; }                /* bumped its side: bounce back */
+  if (stumble > 0){ flash = 1; return end(); }
+  stumble = 330; slow = 45; flash = .7; nextSay();
+}
+function nextSay(){ sayIdx = (sayIdx + 1) % 3; sayT = 120; }
 
 function step(dt){
-  /* Maayan eases toward the finger; his speed feeds the ball's sideways kick */
-  const px = me.x; me.x += (me.tx - me.x) * Math.min(1, .35*dt);
-  me.x = Math.max(me.headR, Math.min(W - me.headR, me.x)); me.vx = (me.x - px) / dt;
+  speed = 9 + Math.min(11, dist / 1500);
+  const v = speed * (slow > 0 ? .55 : 1) * dt;
+  dist += v; slow = Math.max(0, slow - dt);
+  $("score").textContent = Math.floor(dist / 40);
 
-  const g = .32 + Math.min(score, 40) * .006;
-  ball.vy += g*dt; ball.x += ball.vx*dt; ball.y += ball.vy*dt; ball.spin += ball.vx*.05*dt;
-  if (ball.x < ball.r){ ball.x = ball.r; ball.vx = Math.abs(ball.vx)*.8; }
-  if (ball.x > W - ball.r){ ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx)*.8; }
-  if (ball.y < ball.r){ ball.y = ball.r; ball.vy = Math.abs(ball.vy)*.5; }
+  me.x += (me.lane * LW - me.x) * Math.min(1, .32 * dt);
+  if (me.h > 0 || me.vh > 0){ me.vh -= 1.05 * dt; me.h = Math.max(0, me.h + me.vh * dt); if (me.h === 0) me.vh = 0; }
+  me.slide = Math.max(0, me.slide - dt); me.run += v * .045;
 
-  const dx = ball.x - me.x, dy = ball.y - me.headY, d = Math.hypot(dx, dy);
-  if (ball.vy > 0 && d < ball.r + me.headR && dy < 8){
-    ball.vy = -(10.5 + Math.random()*1.5 + Math.min(score, 40)*.07);
-    ball.vx = dx*.16 + me.vx*.35 + (Math.random() - .5)*1.2;
-    ball.y = me.headY - (ball.r + me.headR) * Math.max(.6, -dy/d || 1);
-    score++; $score.textContent = score; bump = 1;
+  nextRow -= v; if (nextRow <= 0) row();
+  for (const o of objs){
+    o.z -= v;
+    if (o.hit || o.z > 14 || o.z + o.len < -14 || Math.abs(me.x - o.lane * LW) > 52) continue;
+    if (o.t === "coin"){ if (me.h < 90){ o.hit = true; coins++; $("coins").textContent = coins; } continue; }
+    if (o.t === "bar" && me.h > 38) continue;
+    if (o.t === "sign" && me.slide > 0) continue;
+    hit(o); if (!playing) return;
   }
-  bump = Math.max(0, bump - .12*dt);
+  objs = objs.filter(o => o.z + o.len > -200 && !(o.t === "coin" && o.hit));
 
-  if (ball.y + ball.r >= GROUND){
-    ball.y = GROUND - ball.r;
-    for (let i = 0; i < 14; i++) sand.push({ x: ball.x, y: GROUND - 2, vx: (Math.random()-.5)*5, vy: -Math.random()*4, life: 1 });
-    end();
+  stumble = Math.max(0, stumble - dt);
+  chase += ((stumble > 0 ? 1 : 0) - chase) * Math.min(1, (stumble > 0 ? .12 : .018) * dt);
+  flash = Math.max(0, flash - .05 * dt); sayT = Math.max(0, sayT - dt);
+}
+
+/* ---------- input ---------- */
+function act(a){
+  if (!playing) return;
+  if (a === "left" && me.lane > -1){ me.prevLane = me.lane; me.lane--; }
+  if (a === "right" && me.lane < 1){ me.prevLane = me.lane; me.lane++; }
+  if (a === "up" && me.h === 0){ me.vh = 15; me.slide = 0; }
+  if (a === "down"){ me.slide = 38; if (me.h > 0) me.vh = Math.min(me.vh, -14); }
+}
+let p0 = null;
+cv.addEventListener("pointerdown", e => { p0 = { x: e.clientX, y: e.clientY, done: false }; });
+cv.addEventListener("pointermove", e => {
+  if (!p0 || p0.done) return;
+  const dx = e.clientX - p0.x, dy = e.clientY - p0.y;
+  if (Math.hypot(dx, dy) < 28) return;
+  p0.done = true; act(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down"));
+});
+cv.addEventListener("pointerup", e => {
+  if (p0 && !p0.done){ const r = cv.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width;
+    act(fx < .33 ? "left" : fx > .67 ? "right" : "up"); }
+  p0 = null;
+});
+document.addEventListener("keydown", e => {
+  const k = { ArrowLeft: "left", a: "left", ArrowRight: "right", d: "right", ArrowUp: "up", w: "up", " ": "up", ArrowDown: "down", s: "down" }[e.key];
+  if (k && playing){ e.preventDefault(); act(k); }
+});
+$over.addEventListener("click", start);
+
+/* ---------- static sky: painted once ---------- */
+const bg = document.createElement("canvas");
+function paintBg(){
+  const d = devicePixelRatio || 1; bg.width = W * d; bg.height = H * d;
+  const b = bg.getContext("2d"); b.scale(d, d);
+  const sky = b.createLinearGradient(0, 0, 0, HZ); sky.addColorStop(0, "#4aa3e8"); sky.addColorStop(1, "#cfe9fb");
+  b.fillStyle = sky; b.fillRect(0, 0, W, H);
+  b.fillStyle = "#ffd23f"; b.beginPath(); b.arc(W/2 + 2, 70, 22, 0, 7); b.fill();   /* the Sol de Mayo, for once without a face */
+  b.fillStyle = "#9fb7cf";
+  for (let i = 0; i < 18; i++){ const x = i * 22 - 10, h = 18 + (i * 37 % 5) * 9; b.fillRect(x, HZ - h, 20, h); }
+  /* the Obelisco at the end of the avenue */
+  b.fillStyle = "#f4f1e8"; b.beginPath(); b.moveTo(W/2 - 7, HZ); b.lineTo(W/2 - 4, HZ - 112); b.lineTo(W/2, HZ - 122); b.lineTo(W/2 + 4, HZ - 112); b.lineTo(W/2 + 7, HZ); b.fill();
+  b.fillStyle = "rgba(20,26,60,.25)"; b.fillRect(W/2 - 1, HZ - 104, 2, 4);
+}
+
+/* ---------- scenery ---------- */
+const FACADES = ["#e63946", "#f4a261", "#2a9d8f", "#e9c46a", "#457b9d", "#8e7dff", "#ff7aa2", "#3fb37f"];
+const quad = (a, b, c, d, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.lineTo(...c); ctx.lineTo(...d); ctx.fill(); };
+function scenery(){
+  const NZ = -150, n = S(NZ);
+  /* sidewalks and road */
+  quad([PX(ZMAX, -WALK - 60), PY(ZMAX)], [PX(ZMAX, WALK + 60), PY(ZMAX)], [PX(NZ, WALK + 60), PY(NZ)], [PX(NZ, -WALK - 60), PY(NZ)], "#c9c3b6");
+  quad([PX(ZMAX, -ROAD), PY(ZMAX)], [PX(ZMAX, ROAD), PY(ZMAX)], [PX(NZ, ROAD), PY(NZ)], [PX(NZ, -ROAD), PY(NZ)], "#3b3f4a");
+  /* kerbs, lane dashes, sidewalk tiles: all scroll with distance */
+  const seg = 200, off = dist % seg;
+  for (let k = Math.ceil(ZMAX / seg); k >= 0; k--){
+    const z0 = k * seg - off - 150, z1 = z0 + 80; if (z0 > ZMAX || z1 < NZ) continue;
+    const a = Math.max(NZ, z0), b = Math.min(ZMAX, z1);
+    for (const x of [-LW/2, LW/2]) quad([PX(a, x - 3), PY(a)], [PX(a, x + 3), PY(a)], [PX(b, x + 3), PY(b)], [PX(b, x - 3), PY(b)], "rgba(255,255,255,.75)");
+    for (const sgn of [-1, 1]) quad([PX(a, sgn * ROAD), PY(a)], [PX(a, sgn * (ROAD + 10)), PY(a)], [PX(b, sgn * (ROAD + 10)), PY(b)], [PX(b, sgn * ROAD), PY(b)], "#f3f0e6");
+  }
+  /* Caminito-coloured houses, far to near */
+  const L = 250, o2 = dist % L, base = Math.floor(dist / L);
+  for (let k = Math.ceil(ZMAX / L); k >= 0; k--){
+    const z0 = k * L - o2 - 120, z1 = z0 + L - 18; if (z1 < NZ + 40) continue;
+    const a = Math.max(NZ + 40, z0);
+    for (const sgn of [-1, 1]){
+      const id = (base + k) * 2 + (sgn > 0 ? 1 : 0), hgt = 130 + (id * 7 % 5) * 34, x = sgn * WALK;
+      const col = FACADES[(id * 5) % FACADES.length];
+      quad([PX(a, x), PY(a)], [PX(a, x), PY(a, hgt)], [PX(z1, x), PY(z1, hgt)], [PX(z1, x), PY(z1)], col);
+      quad([PX(a, x), PY(a, hgt)], [PX(a, x), PY(a, hgt + 10)], [PX(z1, x), PY(z1, hgt + 10)], [PX(z1, x), PY(z1, hgt)], "#f7f4ec");
+      /* door and a window with a green shutter */
+      const zd0 = a + (z1 - a) * .15, zd1 = a + (z1 - a) * .35, zw0 = a + (z1 - a) * .55, zw1 = a + (z1 - a) * .8;
+      quad([PX(zd0, x), PY(zd0)], [PX(zd0, x), PY(zd0, 70)], [PX(zd1, x), PY(zd1, 70)], [PX(zd1, x), PY(zd1)], "rgba(20,26,60,.55)");
+      quad([PX(zw0, x), PY(zw0, 60)], [PX(zw0, x), PY(zw0, 105)], [PX(zw1, x), PY(zw1, 105)], [PX(zw1, x), PY(zw1, 60)], "#1b6b4a");
+    }
   }
 }
 
-function drawMaayan(){
-  const x = me.x, hy = me.headY + bump*4, lean = Math.max(-.25, Math.min(.25, me.vx*.04));
-  ctx.save(); ctx.translate(x, GROUND); ctx.rotate(lean*.3);
-  /* legs, socks, boots */
-  ctx.lineCap = "round"; ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 9;
-  ctx.beginPath(); ctx.moveTo(-9, -36); ctx.lineTo(-11, -6); ctx.moveTo(9, -36); ctx.lineTo(11, -6); ctx.stroke();
-  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 10;
-  ctx.beginPath(); ctx.moveTo(-11, -18); ctx.lineTo(-11, -6); ctx.moveTo(11, -18); ctx.lineTo(11, -6); ctx.stroke();
-  ctx.fillStyle = "#141a3c"; ctx.beginPath(); ctx.ellipse(-13, -3, 9, 4, 0, 0, 7); ctx.ellipse(13, -3, 9, 4, 0, 0, 7); ctx.fill();
-  /* Brazil kit: blue shorts, yellow shirt with green trim */
-  ctx.fillStyle = "#1d3fb8"; ctx.beginPath(); ctx.roundRect(-20, -50, 40, 18, 4); ctx.fill();
-  ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.roundRect(-22, -GROUND + hy + me.headR - 4, 44, (GROUND - hy - me.headR) - 46, 8); ctx.fill();
-  ctx.strokeStyle = "#1b9a59"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-22, -50); ctx.lineTo(22, -50); ctx.stroke();
-  /* arms up, celebrating a little on every touch */
-  ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 7; const ay = -GROUND + hy + me.headR + 6, up = 10 + bump*14;
-  ctx.beginPath(); ctx.moveTo(-20, ay); ctx.lineTo(-34, ay + 20 - up); ctx.moveTo(20, ay); ctx.lineTo(34, ay + 20 - up); ctx.stroke();
-  ctx.fillStyle = "#141a3c"; ctx.font = "700 15px VT323, monospace"; ctx.textAlign = "center"; ctx.fillText("10", 0, ay + 22);
+/* ---------- obstacles ---------- */
+function drawBar(o){
+  const s = S(o.z), x = PX(o.z, o.lane * LW), w = 86 * s;
+  ctx.fillStyle = "#555"; ctx.fillRect(x - w/2 + 4*s, PY(o.z, 44), 5*s, 44*s); ctx.fillRect(x + w/2 - 9*s, PY(o.z, 44), 5*s, 44*s);
+  const y = PY(o.z, 44), hh = 18 * s;
+  ctx.save(); ctx.beginPath(); ctx.rect(x - w/2, y, w, hh); ctx.clip();
+  ctx.fillStyle = "#ffd23f"; ctx.fillRect(x - w/2, y, w, hh); ctx.fillStyle = "#141a3c";
+  for (let i = -2; i < 10; i++){ ctx.beginPath(); ctx.moveTo(x - w/2 + i*16*s, y + hh); ctx.lineTo(x - w/2 + i*16*s + 8*s, y + hh); ctx.lineTo(x - w/2 + i*16*s + 16*s, y); ctx.lineTo(x - w/2 + i*16*s + 8*s, y); ctx.fill(); }
   ctx.restore();
-  /* the head is the real photo */
-  ctx.save(); ctx.beginPath(); ctx.arc(x, hy, me.headR, 0, 7); ctx.closePath();
-  ctx.fillStyle = "#3e4670"; ctx.fill(); ctx.clip();
+}
+function drawSign(o){
+  const s = S(o.z), x = PX(o.z, o.lane * LW), w = 92 * s;
+  ctx.fillStyle = "#2b2f3a"; ctx.fillRect(x - w/2, PY(o.z, 100), 5*s, 100*s); ctx.fillRect(x + w/2 - 5*s, PY(o.z, 100), 5*s, 100*s);
+  const y = PY(o.z, 100), hh = 40 * s;
+  ctx.fillStyle = "#141a3c"; ctx.beginPath(); ctx.roundRect(x - w/2, y, w, hh, 6*s); ctx.fill();
+  ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = Math.max(1, 2.5*s); ctx.beginPath(); ctx.roundRect(x - w/2 + 4*s, y + 4*s, w - 8*s, hh - 8*s, 4*s); ctx.stroke();
+  if (s > .22){ ctx.fillStyle = "#ff7aa2"; ctx.font = `800 ${15*s}px Rubik, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("¡Agachate!", x, y + hh/2 + 1*s); }
+}
+function drawBus(o){
+  const z0 = Math.max(o.z, -100), z1 = o.z + o.len, lx = o.lane * LW, hw = 46, h = 150;
+  if (z0 >= z1) return;
+  const side = o.lane < 0 ? lx + hw : o.lane > 0 ? lx - hw : null;
+  if (side != null){
+    quad([PX(z0, side), PY(z0)], [PX(z0, side), PY(z0, h)], [PX(z1, side), PY(z1, h)], [PX(z1, side), PY(z1)], "#c23b3b");
+    quad([PX(z0, side), PY(z0, 105)], [PX(z0, side), PY(z0, 135)], [PX(z1, side), PY(z1, 135)], [PX(z1, side), PY(z1, 105)], "#1c2a44");
+  }
+  quad([PX(z0, lx - hw), PY(z0, h)], [PX(z0, lx + hw), PY(z0, h)], [PX(z1, lx + hw), PY(z1, h)], [PX(z1, lx - hw), PY(z1, h)], "#e9e4d8");
+  if (o.z < -6) return;   /* we're beside it now: the front face is behind the camera */
+  const s = S(o.z), x = PX(o.z, lx), yb = PY(o.z), w = hw * 2 * s;
+  ctx.fillStyle = "#f2ede0"; ctx.beginPath(); ctx.roundRect(x - w/2, yb - h*s, w, h*s, 8*s); ctx.fill();
+  ctx.fillStyle = "#c23b3b"; ctx.fillRect(x - w/2, yb - 48*s, w, 22*s);
+  ctx.fillStyle = "#1d3fb8"; ctx.fillRect(x - w/2, yb - 26*s, w, 10*s);
+  ctx.fillStyle = "#1c2a44"; ctx.beginPath(); ctx.roundRect(x - w/2 + 6*s, yb - h*s + 26*s, w - 12*s, 62*s, 5*s); ctx.fill();
+  ctx.fillStyle = "#ffd23f"; ctx.fillRect(x - w/2 + 10*s, yb - h*s + 6*s, w - 20*s, 16*s);
+  if (s > .25){ ctx.fillStyle = "#141a3c"; ctx.font = `700 ${13*s}px "Chakra Petch", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("152", x, yb - h*s + 14.5*s); }
+  ctx.fillStyle = "#fff6c8"; ctx.beginPath(); ctx.arc(x - w/2 + 12*s, yb - 36*s, 6*s, 0, 7); ctx.arc(x + w/2 - 12*s, yb - 36*s, 6*s, 0, 7); ctx.fill();
+  ctx.fillStyle = "#141a3c"; ctx.fillRect(x - w/2 + 4*s, yb - 6*s, 14*s, 6*s); ctx.fillRect(x + w/2 - 18*s, yb - 6*s, 14*s, 6*s);
+}
+function drawCoin(o){
+  const s = S(o.z), x = PX(o.z, o.lane * LW), y = PY(o.z, 34 + Math.sin(o.z / 60) * 5), r = 15 * s;
+  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(x, PY(o.z), r, r*.3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#e2a340"; ctx.beginPath(); ctx.arc(x, y + r*.35, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#b8792a";
+  for (let i = 0; i <= 6; i++){ const a = Math.PI + i * Math.PI / 6; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y + r*.35 + Math.sin(a) * r, 2.6*s, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "rgba(255,240,200,.6)"; ctx.beginPath(); ctx.ellipse(x - r*.3, y - r*.1, r*.25, r*.12, -.5, 0, 7); ctx.fill();
+}
+
+/* ---------- Maayan, from behind, in an Argentina shirt ---------- */
+function drawMe(){
+  const s = 1, x = PX(0, me.x), foot = PY(0, me.h), sl = me.slide > 0, t = me.run;
+  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(x, PY(0), 26 - Math.min(14, me.h / 8), 7, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(x, foot); ctx.rotate((me.lane * LW - me.x) * -.004);
+  const bodyTop = sl ? -62 : -102, swing = playing && me.h === 0 && !sl ? Math.sin(t) : (me.h > 0 ? .5 : 0);
+  ctx.lineCap = "round";
+  if (!sl){
+    ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(-8, -40); ctx.lineTo(-10, -8 + swing * 8); ctx.moveTo(8, -40); ctx.lineTo(10, -8 - swing * 8); ctx.stroke();
+    ctx.fillStyle = "#f7f4ec"; ctx.beginPath(); ctx.ellipse(-10, -4 + swing * 8, 8, 5, 0, 0, 7); ctx.ellipse(10, -4 - swing * 8, 8, 5, 0, 0, 7); ctx.fill();
+  } else {
+    ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(-8, -26); ctx.lineTo(-20, -4); ctx.moveTo(8, -26); ctx.lineTo(20, -4); ctx.stroke();
+  }
+  ctx.fillStyle = "#141a3c"; ctx.beginPath(); ctx.roundRect(-19, sl ? -34 : -54, 38, 18, 4); ctx.fill();
+  /* sky-blue and white stripes, number 10 */
+  const sh = sl ? 30 : 52, sy = bodyTop + 12;
+  ctx.save(); ctx.beginPath(); ctx.roundRect(-22, sy, 44, sh, 9); ctx.clip();
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(-22, sy, 44, sh); ctx.fillStyle = "#75aadb";
+  for (let i = -22; i < 22; i += 11) ctx.fillRect(i, sy, 5.5, sh);
+  ctx.restore();
+  ctx.fillStyle = "#141a3c"; ctx.font = `700 ${sl ? 14 : 18}px "Chakra Petch", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("10", 0, sy + sh/2);
+  ctx.strokeStyle = "#c98d5b"; ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.moveTo(-20, sy + 6); ctx.lineTo(-32, sy + 24 - swing * 10); ctx.moveTo(20, sy + 6); ctx.lineTo(32, sy + 24 + swing * 10); ctx.stroke();
+  ctx.restore();
+  /* the head is the real photo: he keeps looking back at who's chasing him */
+  const hx = x + (me.lane * LW - me.x) * -.1, hy = foot + bodyTop - 8, r = 24;
+  ctx.save(); ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.fillStyle = "#3e4670"; ctx.fill(); ctx.clip();
   if (face.complete && face.naturalWidth){
-    const s = Math.max(me.headR*2 / face.naturalWidth, me.headR*2 / face.naturalHeight)*1.15;
-    ctx.drawImage(face, x - face.naturalWidth*s/2, hy - face.naturalHeight*s/2.4, face.naturalWidth*s, face.naturalHeight*s);
+    const k = Math.max(r*2 / face.naturalWidth, r*2 / face.naturalHeight) * 1.15;
+    ctx.drawImage(face, hx - face.naturalWidth*k/2, hy - face.naturalHeight*k/2.4, face.naturalWidth*k, face.naturalHeight*k);
   }
   ctx.restore();
-  ctx.lineWidth = 3; ctx.strokeStyle = "#ffffff"; ctx.beginPath(); ctx.arc(x, hy, me.headR, 0, 7); ctx.stroke();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.stroke();
 }
 
-function drawBall(){
-  const { x, y, r } = ball;
-  ctx.fillStyle = "rgba(20,26,60,.18)";
-  const sh = 1 - Math.min(1, (GROUND - y)/400);
-  ctx.beginPath(); ctx.ellipse(x, GROUND - 2, r*(.5 + sh*.6), 4, 0, 0, 7); ctx.fill();
-  ctx.save(); ctx.translate(x, y); ctx.rotate(ball.spin);
-  ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#141a3c"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#141a3c";
-  const pent = (cx, cy, s) => { ctx.beginPath(); for (let i = 0; i < 5; i++){ const a = i*1.2566 - 1.5708; ctx.lineTo(cx + Math.cos(a)*s, cy + Math.sin(a)*s); } ctx.fill(); };
-  pent(0, 0, r*.36);
-  for (let i = 0; i < 5; i++){ const a = i*1.2566 - 1.5708; ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r - 1, 0, 7); ctx.clip(); pent(Math.cos(a)*r*.95, Math.sin(a)*r*.95, r*.3); ctx.restore(); }
-  ctx.restore();
+/* ---------- chasers, seen from behind as they run after him ---------- */
+function legs(c, swing, col, shoe){
+  c.strokeStyle = col; c.lineWidth = 10; c.lineCap = "round";
+  c.beginPath(); c.moveTo(-9, -40); c.lineTo(-11, -8 + swing * 9); c.moveTo(9, -40); c.lineTo(11, -8 - swing * 9); c.stroke();
+  c.fillStyle = shoe; c.beginPath(); c.ellipse(-11, -4 + swing * 9, 9, 5, 0, 0, 7); c.ellipse(11, -4 - swing * 9, 9, 5, 0, 0, 7); c.fill();
+}
+function arms(c, y, swing, col, upL, upR){
+  c.strokeStyle = col; c.lineWidth = 8; c.lineCap = "round";
+  c.beginPath(); c.moveTo(-22, y); c.lineTo(-34, upL ? y - 26 : y + 22 - swing * 10);
+  c.moveTo(22, y); c.lineTo(34, upR ? y - 26 : y + 22 + swing * 10); c.stroke();
+}
+function drawCop(c, sw){
+  legs(c, sw, "#2f4a2c", "#111");
+  arms(c, -88, sw, "#2f4a2c", false, true);
+  c.fillStyle = "#2f4a2c"; c.beginPath(); c.roundRect(-24, -100, 48, 64, 9); c.fill();
+  c.fillStyle = "#c6f43b"; c.beginPath(); c.roundRect(-22, -96, 44, 48, 7); c.fill();
+  c.fillStyle = "#c0c4c8"; c.fillRect(-22, -70, 44, 5);
+  c.fillStyle = "#1e2d1b"; c.font = '800 10px Rubik, sans-serif'; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("POLICÍA", 0, -84);
+  c.fillStyle = "#6b4a32"; c.beginPath(); c.arc(0, -114, 17, 0, 7); c.fill();
+  c.fillStyle = "#2f4a2c"; c.beginPath(); c.ellipse(0, -124, 19, 10, 0, Math.PI, 0); c.fill(); c.fillRect(-19, -126, 38, 5);
+  c.fillStyle = "#ffd23f"; c.beginPath(); c.arc(34, -116, 4, 0, 7); c.fill();   /* whistle hand */
+}
+function drawChola(c, sw){
+  c.fillStyle = "#3a2a22"; c.fillRect(-12, -16, 8, 14); c.fillRect(4, -16, 8, 14);
+  /* layered pollera skirt */
+  const sk = [["#e0307a", 0], ["#8e3fd6", -14], ["#ff7aa2", -28]];
+  sk.forEach(([col, dy]) => { c.fillStyle = col; c.beginPath(); c.moveTo(-34 - sw * 3, -10 + dy); c.quadraticCurveTo(0, -2 + dy, 34 + sw * 3, -10 + dy); c.lineTo(16, -58); c.lineTo(-16, -58); c.fill(); });
+  arms(c, -82, sw, "#a86e4a", true, true);
+  /* striped manta over the shoulders */
+  c.fillStyle = "#1b9a59"; c.beginPath(); c.roundRect(-24, -98, 48, 44, 10); c.fill();
+  ["#ffd23f", "#e63946", "#49e6ff"].forEach((col, i) => { c.fillStyle = col; c.fillRect(-24, -88 + i * 11, 48, 4); });
+  /* two long braids with tassels */
+  c.fillStyle = "#141414"; c.beginPath(); c.arc(0, -112, 17, 0, 7); c.fill();
+  [-8, 8].forEach(bx => { c.strokeStyle = "#141414"; c.lineWidth = 6; c.beginPath(); c.moveTo(bx, -104); c.lineTo(bx + sw * 2, -52); c.stroke();
+    c.fillStyle = "#e63946"; c.beginPath(); c.arc(bx + sw * 2, -50, 4, 0, 7); c.fill(); });
+  /* the bowler hat, perched on top */
+  c.fillStyle = "#4a3426"; c.beginPath(); c.ellipse(0, -126, 18, 4, 0, 0, 7); c.fill();
+  c.beginPath(); c.ellipse(0, -132, 10, 10, 0, Math.PI, 0); c.fill(); c.fillRect(-10, -133, 20, 6);
+}
+function drawIma(c, sw){
+  legs(c, sw * .8, "#d9b08c", "#6b3a5a");
+  c.fillStyle = "#5b5f8a"; c.beginPath(); c.moveTo(-24, -24); c.lineTo(24, -24); c.lineTo(20, -64); c.lineTo(-20, -64); c.fill();
+  arms(c, -86, sw, "#a04a8c", false, true);
+  c.fillStyle = "#a04a8c"; c.beginPath(); c.roundRect(-23, -100, 46, 42, 10); c.fill();
+  c.strokeStyle = "#7a3168"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -98); c.lineTo(0, -60); c.stroke();
+  /* handbag */
+  c.fillStyle = "#8a5a2b"; c.beginPath(); c.roundRect(-38, -66, 16, 14, 3); c.fill();
+  c.strokeStyle = "#8a5a2b"; c.lineWidth = 2; c.beginPath(); c.arc(-30, -66, 6, Math.PI, 0); c.stroke();
+  /* grey hair with a bun */
+  c.fillStyle = "#b9b9c2"; c.beginPath(); c.arc(0, -114, 17, 0, 7); c.fill(); c.beginPath(); c.arc(0, -132, 8, 0, 7); c.fill();
+  /* the sweater, waved like a flag */
+  c.save(); c.translate(38, -114); c.rotate(-.4 + sw * .25);
+  c.fillStyle = "#e63946"; c.beginPath(); c.roundRect(-4, -26, 30, 24, 4); c.fill();
+  c.fillRect(-12, -26, 10, 18); c.fillRect(24, -26, 10, 18);
+  c.fillStyle = "#fff"; for (let i = 0; i < 3; i++) c.fillRect(0, -20 + i * 7, 22, 2);
+  c.restore();
+}
+function drawChaser(){
+  if (chase < .02) return;
+  const s = 1.22, x = PX(-40, me.x + (me.x <= 0 ? 78 : -78)), y = PY(-40) + (1 - chase) * 260;
+  const sw = playing ? Math.sin(me.run * 1.05 + 1) : 0;
+  ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(x, y, 30 * s, 8 * s, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); CHASERS[who].draw(ctx, sw); ctx.restore();
+  if (sayT > 0 || !playing || chase > .85){
+    const txt = CHASERS[who].say[sayIdx]; ctx.direction = /[\u0590-\u05FF]/.test(txt) ? "rtl" : "ltr"; ctx.font = '800 15px Rubik, sans-serif';
+    const tw = ctx.measureText(txt).width + 20, bx = Math.max(6, Math.min(W - tw - 6, x - tw/2)), by = y - 190 * s + 8;
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(bx, by, tw, 30, 10); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 6, by + 30); ctx.lineTo(x + 6, by + 30); ctx.lineTo(x, by + 40); ctx.fill();
+    ctx.fillStyle = "#141a3c"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, bx + tw/2, by + 16); ctx.direction = "ltr";
+  }
 }
 
 function draw(){
   ctx.drawImage(bg, 0, 0, W, H);
-  drawMaayan(); drawBall();
-  ctx.fillStyle = "#e0b86a";
-  sand = sand.filter(p => p.life > 0);
-  sand.forEach(p => { ctx.globalAlpha = p.life; ctx.fillRect(p.x, p.y, 3, 3); }); ctx.globalAlpha = 1;
+  scenery();
+  const list = objs.filter(o => !o.hit || o.t !== "coin").slice().sort((a, b) => b.z - a.z);
+  const D = { bar: drawBar, sign: drawSign, bus: drawBus, coin: drawCoin };
+  let meDrawn = false;
+  for (const o of list){
+    if (!meDrawn && o.z < 0 && o.t !== "bus"){ drawMe(); meDrawn = true; }
+    D[o.t](o);
+  }
+  if (!meDrawn) drawMe();
+  drawChaser();
+  if (flash > 0){ ctx.fillStyle = `rgba(255,99,132,${flash * .35})`; ctx.fillRect(0, 0, W, H); }
+  if (playing && stumble > 0){
+    ctx.fillStyle = "rgba(5,8,15,.7)"; ctx.beginPath(); ctx.roundRect(W/2 - 92, 12, 184, 30, 15); ctx.fill();
+    ctx.fillStyle = "#ffc857"; ctx.font = '700 14px Rubik, sans-serif'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.direction = "rtl"; ctx.fillText("זהירות, עוד מכה ונתפסת", W/2, 27.5); ctx.direction = "ltr";
+  }
 }
 
 function loop(t){
   const dt = Math.min(2.5, (t - last) / 16.67); last = t;
-  if (playing) step(dt);
-  sand.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += .3*dt; p.life -= .03*dt; });
-  draw();
-  if (playing || sand.length) requestAnimationFrame(loop);
+  if (!playing) return;
+  step(dt); draw();
+  if (playing) requestAnimationFrame(loop);
 }
 
-const toGame = e => { const r = cv.getBoundingClientRect(); return (e.clientX - r.left) / r.width * W; };
-cv.addEventListener("pointerdown", e => { me.tx = toGame(e); });
-cv.addEventListener("pointermove", e => { if (e.pointerType === "mouse" || e.buttons || e.pointerType === "touch") me.tx = toGame(e); });
-document.addEventListener("keydown", e => {
-  if (e.key === "ArrowLeft") me.tx = Math.max(0, me.tx - 40);
-  if (e.key === "ArrowRight") me.tx = Math.min(W, me.tx + 40);
-});
-$over.addEventListener("click", start);
-$over.addEventListener("pointerdown", e => { me.tx = toGame(e); });
-
+function fit(){ const d = devicePixelRatio || 1; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0); ctx.direction = "ltr"; paintBg(); draw(); }
 face.onload = draw;
+document.fonts?.ready.then(draw);
 addEventListener("resize", fit);
 reset(); fit();
 </script>
