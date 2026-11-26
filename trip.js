@@ -13,7 +13,7 @@ const TRIP = {
   ],
   counters: { flights: 0, nightBuses: 0, treks: 0, extreme: 0, hostels: 0 },
   links: [
-    { label: "מפת הטיול", note: "מסלול ותמונות ב-Polarsteps", href: "", icon: "map" },
+    { label: "מפת הטיול", note: "מסלול ותמונות ב-Polarsteps", href: "https://www.polarsteps.com/mynSHHm/30275289-a-new-adventure?s=d9dd30dc-8c00-41d6-bc0e-a03d3bf57eb5", icon: "map" },
     { label: "אינסטגרם",  note: "", href: "", icon: "camera" },
     /* WhatsApp channel link (whatsapp.com/channel/...): put it in href and the button turns on */
     { label: "עדכונים בוואטסאפ", note: "הצטרפו לערוץ וקבלו כל עדכון", href: "", icon: "chat" }
